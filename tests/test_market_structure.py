@@ -3,30 +3,29 @@ Aegis AI
 Test: Market Structure Engine
 Version: 0.0.1
 """
-
-import pandas as pd
-
+from engine.structure_analyzer import StructureAnalyzer
+from engine.data_loader import DataLoader
 from engine.market_structure import MarketStructureEngine
 
 
-# Sample OHLC Data
-data = {
-    "Open":  [100, 101, 102, 103, 104, 103, 102, 101, 100],
-    "High":  [101, 102, 103, 105, 104, 103, 102, 101, 100],
-    "Low":   [99, 100, 101, 102, 101, 100, 99, 98, 97],
-    "Close": [100, 101, 102, 104, 103, 102, 101, 100, 99],
-}
-
-df = pd.DataFrame(data)
+loader = DataLoader()
+df = loader.load_csv("data/sample_data.csv")
 
 engine = MarketStructureEngine()
 
 result = engine.detect_swings(df)
 
+analyzer = StructureAnalyzer()
+
+structure = analyzer.analyze(
+    result["swing_highs"],
+    result["swing_lows"]
+)
+
 print("Swing Highs:", result["swing_highs"])
 print("Swing Lows:", result["swing_lows"])
-print("Trend:", result["trend"])
-print("Higher Highs:", result["higher_highs"])
-print("Higher Lows:", result["higher_lows"])
-print("Lower Highs:", result["lower_highs"])
-print("Lower Lows:", result["lower_lows"])
+print("Trend:", structure["trend"])
+print("Higher Highs:", structure["higher_highs"])
+print("Higher Lows:", structure["higher_lows"])
+print("Lower Highs:", structure["lower_highs"])
+print("Lower Lows:", structure["lower_lows"])
