@@ -19,3 +19,8 @@
 ## Improved
 - Modular architecture
 - Separated Market Structure Engine from Structure Analyzer
+## v0.3.1
+- Added Fair Value Gap (FVG) Engine
+- Detects Bullish and Bearish Fair Value Gaps
+- Tested on live MT5 XAUUSD M15 data
+- Added FVG test module
