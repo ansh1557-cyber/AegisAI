@@ -15,11 +15,17 @@ class MT5Connector:
             raise Exception(f"MT5 Initialization Failed: {mt5.last_error()}")
 
         print("Connected to MetaTrader 5")
+        return True
 
     def disconnect(self):
         mt5.shutdown()
 
-    def get_rates(self, symbol="XAUUSD", timeframe=mt5.TIMEFRAME_M15, bars=500):
+    def get_rates(
+        self,
+        symbol="XAUUSD",
+        timeframe=mt5.TIMEFRAME_M15,
+        bars=500,
+    ):
 
         rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, bars)
 

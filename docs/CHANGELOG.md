@@ -24,3 +24,9 @@
 - Detects Bullish and Bearish Fair Value Gaps
 - Tested on live MT5 XAUUSD M15 data
 - Added FVG test module
+## v0.3.2
+- Added Liquidity Sweep Engine
+- Detects Buy-side Liquidity Sweeps
+- Detects Sell-side Liquidity Sweeps
+- Improved algorithm to scan the next 20 candles
+- Validated on live MT5 XAUUSD data

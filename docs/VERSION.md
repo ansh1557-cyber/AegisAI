@@ -12,3 +12,4 @@ Next
 ----
 → Liquidity Engine
 Current Version: v0.3.1
+Current Version: v0.3.2
