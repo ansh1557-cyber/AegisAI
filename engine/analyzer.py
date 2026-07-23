@@ -10,6 +10,8 @@ from engine.bos import BOSEngine
 from engine.choch import CHOCHEngine
 from engine.fvg import FVGEngine
 from engine.liquidity import LiquidityEngine
+from engine.order_block import OrderBlockEngine
+from engine.premium_discount import PremiumDiscountEngine
 
 
 class MarketAnalyzer:
@@ -21,7 +23,9 @@ class MarketAnalyzer:
         self.choch = CHOCHEngine()
         self.fvg = FVGEngine()
         self.liquidity = LiquidityEngine()
-
+        self.order_block = OrderBlockEngine()
+        self.premium_discount = PremiumDiscountEngine()
+        
     def analyze(self, df):
 
         print("1. Detecting swings...")
@@ -58,8 +62,19 @@ class MarketAnalyzer:
             swings["swing_highs"],
             swings["swing_lows"]
         )
+        
+        print("7. Detecting Order Blocks...")
+        order_blocks = self.order_block.detect(df)
+        
+        print("8. Detecting Premium / Discount Zones...")
 
-        print("7. Analysis complete!")
+        premium_discount = self.premium_discount.detect(  
+            df,                                            
+            swings["swing_highs"],
+            swings["swing_lows"]
+        )
+
+        print("8. Analysis complete!")
 
         return {
             "swings": swings,
@@ -68,4 +83,6 @@ class MarketAnalyzer:
             "choch": choch,
             "fvg": fvg,
             "liquidity": liquidity,
+            "order_blocks": order_blocks,
+            "premium_discount": premium_discount,
         }

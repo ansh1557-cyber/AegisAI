@@ -6,6 +6,7 @@ Version: 0.3.3
 
 print("RUNNING NEW ANALYZE_LIVE_MARKET")
 
+from engine.config import SYMBOL, TIMEFRAME, BARS
 from engine.mt5_connector import MT5Connector
 from engine.analyzer import MarketAnalyzer
 
@@ -17,8 +18,9 @@ if connector.connect():
 
     print("Getting market data...")
     df = connector.get_rates(
-        symbol="XAUUSD",
-        bars=500
+       symbol=SYMBOL,
+       timeframe=TIMEFRAME,
+       bars=BARS
     )
 
     print("Data received:", df is not None)
@@ -51,6 +53,15 @@ if connector.connect():
 
         print("Buy-side Sweeps:", len(result["liquidity"]["buy_side_sweeps"]))
         print("Sell-side Sweeps:", len(result["liquidity"]["sell_side_sweeps"]))
+        
+        print("Bullish Order Blocks:",len(result["order_blocks"]["bullish_blocks"]))
+
+        print("Bearish Order Blocks:",len(result["order_blocks"]["bearish_blocks"]))
+        
+        print("Premium:", result["premium_discount"]["premium"])
+        print("Discount:", result["premium_discount"]["discount"])
+        print("Equilibrium:", result["premium_discount"]["equilibrium"])
+        print("Current Zone:", result["premium_discount"]["current_zone"])
 
         print("====================================")
 
