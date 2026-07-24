@@ -77,6 +77,7 @@ class MarketAnalyzer:
         print("8. Analysis complete!")
 
         return {
+            "data": df,
             "swings": swings,
             "structure": structure,
             "bos": bos,
