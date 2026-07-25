@@ -27,6 +27,7 @@ signal = EntryEngine().analyze(results)
 
 # Calculate trade parameters
 trade = RiskManager().calculate(
+    analysis=analysis,
     signal=signal,
     entry_price=entry_price
 )
