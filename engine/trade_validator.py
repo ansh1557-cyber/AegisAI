@@ -37,7 +37,9 @@ class TradeValidator:
         h1_trend = analysis["H1"]["structure"]["trend"]
         order_blocks = analysis["M15"]["order_blocks"]
         fvg = analysis["M15"]["fvg"]
-
+        liquidity = analysis["M15"]["liquidity"]
+        premium_discount = analysis["M15"]["premium_discount"]
+       
         # -----------------------------
         # BUY Validation
         # -----------------------------
@@ -70,6 +72,19 @@ class TradeValidator:
             else:
                 approved = False
                 checks.append("❌ No Bullish Fair Value Gap")
+            
+            # Sell-side Liquidity Sweep
+            if len(liquidity["sell_side_sweeps"]) > 0:
+                checks.append("✅ Sell-side Liquidity Sweep")
+            else:
+                approved = False
+                checks.append("❌ No Sell-side Liquidity Sweep")
+            # Discount Zone
+            if premium_discount["current_zone"] == "Discount":
+                checks.append("✅ Discount Zone")
+            else:
+                approved = False
+                checks.append("❌ Not in Discount Zone")
 
         # -----------------------------
         # SELL Validation
@@ -103,6 +118,20 @@ class TradeValidator:
             else:
                 approved = False
                 checks.append("❌ No Bearish Fair Value Gap")
+            
+            # Buy-side Liquidity Sweep
+            if len(liquidity["buy_side_sweeps"]) > 0:
+                checks.append("✅ Buy-side Liquidity Sweep")
+            else:
+                approved = False
+                checks.append("❌ No Buy-side Liquidity Sweep")
+            
+            # Premium Zone
+            if premium_discount["current_zone"] == "Premium":
+                checks.append("✅ Premium Zone")
+            else:
+                approved = False
+                checks.append("❌ Not in Premium Zone")
 
         return {
             "approved": approved,
