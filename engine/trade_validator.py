@@ -36,6 +36,7 @@ class TradeValidator:
         h4_trend = analysis["H4"]["structure"]["trend"]
         h1_trend = analysis["H1"]["structure"]["trend"]
         order_blocks = analysis["M15"]["order_blocks"]
+        fvg = analysis["M15"]["fvg"]
 
         # -----------------------------
         # BUY Validation
@@ -62,6 +63,13 @@ class TradeValidator:
             else:
                 approved = False
                 checks.append("❌ No Bullish Order Block")
+                
+            # Bullish Fair Value Gap
+            if len(fvg["bullish_fvg"]) > 0:
+                checks.append("✅ Bullish Fair Value Gap")
+            else:
+                approved = False
+                checks.append("❌ No Bullish Fair Value Gap")
 
         # -----------------------------
         # SELL Validation
@@ -88,6 +96,13 @@ class TradeValidator:
             else:
                 approved = False
                 checks.append("❌ No Bearish Order Block")
+                
+            # Bearish Fair Value Gap
+            if len(fvg["bearish_fvg"]) > 0:
+                checks.append("✅ Bearish Fair Value Gap")
+            else:
+                approved = False
+                checks.append("❌ No Bearish Fair Value Gap")
 
         return {
             "approved": approved,
