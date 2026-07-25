@@ -52,6 +52,15 @@ class RiskManager:
             take_profit = entry_price - (sl_distance*rr)
 
 
+        # Distance from entry to stop loss
+        sl_distance = abs(entry_price - stop_loss)
+
+        # Approximate pip value for XAUUSD
+        pip_value = 1
+
+        # Risk-based lot size
+        lot_size = risk_amount / (sl_distance * pip_value)
+
         return {
 
             "entry": round(entry_price, 2),
@@ -62,7 +71,7 @@ class RiskManager:
 
             "risk_reward": f"1:{rr}",
 
-            "lot_size": 0.10,
+            "lot_size": round(lot_size, 2),
 
             "risk": round(risk_amount, 2),
         }

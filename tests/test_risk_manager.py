@@ -2,6 +2,7 @@ from engine.multi_timeframe import MultiTimeframeAnalyzer
 from engine.bias import BiasEngine
 from engine.entry import EntryEngine
 from engine.risk_manager import RiskManager
+from engine.trade_validator import TradeValidator
 
 # Run market analysis
 analysis = MultiTimeframeAnalyzer().analyze()
@@ -32,10 +33,25 @@ trade = RiskManager().calculate(
     entry_price=entry_price
 )
 
+validation = TradeValidator().validate(
+    analysis,
+    signal
+)
+
 print("\n========== AEGIS AI TRADE ==========\n")
 
 print(f"Signal: {signal['signal']}")
 print(f"Confidence: {signal['confidence']}%")
+
+print("\nTrade Validation:")
+
+if validation["approved"]:
+    print("✅ TRADE APPROVED")
+else:
+    print("❌ TRADE REJECTED")
+
+for reason in validation["reasons"]:
+    print("-", reason)
 
 if trade:
     print(f"\nEntry: {trade['entry']}")
