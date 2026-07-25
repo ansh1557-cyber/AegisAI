@@ -50,9 +50,10 @@ if validation["approved"]:
 else:
     print("❌ TRADE REJECTED")
 
-for reason in validation["reasons"]:
-    print("-", reason)
-
+for check in validation["checks"]:
+    print(check)
+    
+    
 if trade:
     print(f"\nEntry: {trade['entry']}")
     print(f"Stop Loss: {trade['stop_loss']}")
