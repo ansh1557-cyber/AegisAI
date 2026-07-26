@@ -1,10 +1,14 @@
+from engine.mt5_connector import MT5Connector
 from engine.multi_timeframe import MultiTimeframeAnalyzer
 from engine.bias import BiasEngine
 from engine.entry import EntryEngine
 from engine.risk_manager import RiskManager
 from engine.trade_validator import TradeValidator
 
+import MetaTrader5 as mt5
+
 # Run market analysis
+MT5Connector().connect()
 analysis = MultiTimeframeAnalyzer().analyze()
 from pprint import pprint
 
@@ -66,3 +70,5 @@ print("\nReasons:")
 
 for reason in signal["reasons"]:
     print(f"✓ {reason}")
+    
+mt5.shutdown()

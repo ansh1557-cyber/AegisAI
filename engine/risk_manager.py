@@ -4,15 +4,23 @@ Module: Risk Manager
 Version: 0.2.1
 """
 
+from engine.symbol_info import SymbolInfo
 from engine.config import (
     ACCOUNT_BALANCE,
     RISK_PERCENT,
     RISK_REWARD,
     SL_BUFFER,
+    MAX_LOT,
+    MIN_LOT,
+    LOT_STEP,
+    
 )
 
 
 class RiskManager:
+    
+    def __init__(self):
+      self.symbol = SymbolInfo()
 
     def calculate(
         self,
@@ -54,12 +62,30 @@ class RiskManager:
 
         # Distance from entry to stop loss
         sl_distance = abs(entry_price - stop_loss)
+        
+        # Privent division by zero
+        if sl_distance == 0:
+            sl_distance = 0.01
+            
+        # Get broker symbol information
+        info = self.symbol.get()
 
-        # Approximate pip value for XAUUSD
-        pip_value = 1
+        tick_value = info["tick_value"]
+        tick_size = info["tick_size"]
+        min_lot = info["min_lot"]
+        max_lot = info["max_lot"]
+        lot_step = info["lot_step"]
 
-        # Risk-based lot size
-        lot_size = risk_amount / (sl_distance * pip_value)
+        # Calculate lot size using broker data
+        lot_size = risk_amount / ((sl_distance / tick_size) * tick_value)
+
+        # Round to broker lot step
+        lot_size = round(lot_size / lot_step) * lot_step
+
+        # Apply broker limits
+        lot_size = max(min_lot, lot_size)
+        lot_size = min(max_lot, lot_size)
+
 
         return {
 

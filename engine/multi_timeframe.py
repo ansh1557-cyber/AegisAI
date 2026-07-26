@@ -35,6 +35,6 @@ class MultiTimeframeAnalyzer:
 
             results[name] = self.analyzer.analyze(df)
 
-        self.connector.disconnect()
+       
 
         return results
