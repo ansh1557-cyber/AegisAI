@@ -29,3 +29,6 @@ SL_BUFFER = 2
 MIN_LOT = 0.01
 MAX_LOT = 1.00
 LOT_STEP = 0.01
+
+# Trade Execution
+DRY_RUN = True
