@@ -13,7 +13,7 @@ class TradeExecutor:
     def build_order(self, signal, trade):
 
         if signal["signal"] == "WAIT":
-            return None
+            return None 
 
         # Get current market price
         tick = mt5.symbol_info_tick(SYMBOL)
@@ -54,7 +54,16 @@ class TradeExecutor:
 
             "type_filling": mt5.ORDER_FILLING_IOC,
         }
+ 
+        def execute(self, request):
 
+            result = mt5.order_send(request)
+            
+            if result is None:
+                raise Exception("MT5 returned no result.")
+
+            return result
+        
         if DRY_RUN:
 
             print("\n========== DRY RUN ==========\n")

@@ -8,6 +8,7 @@ from engine.entry import EntryEngine
 from engine.risk_manager import RiskManager
 from engine.trade_validator import TradeValidator
 from engine.trade_executor import TradeExecutor
+from engine.config import DRY_RUN
 
 
 import MetaTrader5 as mt5
@@ -45,15 +46,27 @@ validation = TradeValidator().validate(
 # Build order only if approved
 if validation["approved"]:
 
-    order = TradeExecutor().build_order(
+    executor = TradeExecutor()
+
+    request = executor.build_order(
         signal,
         trade,
     )
 
-    print("\n========== ORDER ==========\n")
+    if DRY_RUN:
 
-    for key, value in order.items():
-        print(f"{key}: {value}")
+        print("\n========== DRY RUN COMPLETED ==========\n")
+
+    else:
+
+        result = executor.execute(request)
+
+        print("\n========== MT5 RESULT ==========\n")
+
+        print(f"Retcode : {result.retcode}")
+        print(f"Order   : {result.order}")
+        print(f"Deal    : {result.deal}")
+        print(f"Comment : {result.comment}")
 
 else:
 
