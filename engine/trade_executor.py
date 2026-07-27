@@ -6,7 +6,8 @@ Version: 0.2.1
 
 import MetaTrader5 as mt5
 
-from engine.config import SYMBOL, DRY_RUN
+from engine.config import SYMBOL, DRY_RUN, MAGIC_NUMBER
+
 
 
 class TradeExecutor:
@@ -38,7 +39,7 @@ class TradeExecutor:
             "sl": trade["stop_loss"],
             "tp": trade["take_profit"],
             "deviation": 10,
-            "magic": 20260726,
+            "magic": MAGIC_NUMBER,
             "comment": "Aegis AI",
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_IOC,

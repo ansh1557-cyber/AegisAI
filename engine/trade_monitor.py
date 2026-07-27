@@ -1,13 +1,13 @@
 """
 Aegis AI
 Module: Trade Monitor
-Version: 0.2.0
+Version: 0.3.0
 """
 
 import time
 import MetaTrader5 as mt5
 
-from engine.config import SYMBOL
+from engine.config import SYMBOL, MAGIC_NUMBER
 
 
 class TradeMonitor:
@@ -18,6 +18,13 @@ class TradeMonitor:
 
         if positions is None:
             return []
+
+        # Only keep Aegis AI trades
+        positions = [
+            position
+            for position in positions
+            if position.magic == MAGIC_NUMBER
+        ]
 
         return positions
 
@@ -35,7 +42,7 @@ class TradeMonitor:
 
                 current_tickets = {position.ticket for position in positions}
 
-                # New trade detected
+                # New trades
                 new_tickets = current_tickets - previous_tickets
 
                 for position in positions:
@@ -45,13 +52,13 @@ class TradeMonitor:
                         print("\n========== NEW TRADE ==========\n")
                         print(f"Ticket : {position.ticket}")
                         print(f"Symbol : {position.symbol}")
-                        print(f"Type   : {'BUY' if position.type == 0 else 'SELL'}")
+                        print(f"Type   : {'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}")
                         print(f"Volume : {position.volume}")
                         print(f"Open   : {position.price_open}")
                         print(f"SL     : {position.sl}")
                         print(f"TP     : {position.tp}")
 
-                # Trade closed
+                # Closed trades
                 closed_tickets = previous_tickets - current_tickets
 
                 for ticket in closed_tickets:

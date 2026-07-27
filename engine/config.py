@@ -32,3 +32,5 @@ LOT_STEP = 0.01
 
 # Trade Execution
 DRY_RUN = False
+
+MAGIC_NUMBER = 20260726
