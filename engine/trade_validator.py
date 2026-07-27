@@ -132,7 +132,8 @@ class TradeValidator:
             else:
                 approved = False
                 checks.append("❌ Not in Premium Zone")
-
+                
+            
         return {
             "approved": approved,
             "checks": checks,

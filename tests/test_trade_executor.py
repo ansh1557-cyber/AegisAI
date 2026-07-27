@@ -10,7 +10,6 @@ from engine.trade_validator import TradeValidator
 from engine.trade_executor import TradeExecutor
 from engine.config import DRY_RUN
 
-
 import MetaTrader5 as mt5
 
 # Analyse market
@@ -43,7 +42,17 @@ validation = TradeValidator().validate(
     signal,
 )
 
-# Build order only if approved
+print("\n========== TRADE VALIDATION ==========\n")
+
+if validation["approved"]:
+    print("✅ TRADE APPROVED")
+else:
+    print("❌ TRADE REJECTED")
+
+for check in validation["checks"]:
+    print(check)
+
+# Only continue if the trade is approved
 if validation["approved"]:
 
     executor = TradeExecutor()
@@ -62,7 +71,6 @@ if validation["approved"]:
         result = executor.execute(request)
 
         print("\n========== MT5 RESULT ==========\n")
-
         print(f"Retcode : {result.retcode}")
         print(f"Order   : {result.order}")
         print(f"Deal    : {result.deal}")
