@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Telegram Notifications
-Version: 0.2.0
+Version: 0.3.0
 """
 
 import requests
@@ -47,20 +47,65 @@ Reasons:
 
         for reason in signal["reasons"]:
             message += f"\n✓ {reason}"
-            
+
+        return self.send(message)
+
     def send_rejection(self, signal, checks):
 
         message = f"""
-    🤖 AEGIS AI
+🤖 AEGIS AI
 
-    ❌ TRADE REJECTED
+❌ TRADE REJECTED
 
-    Signal: {signal['signal']}
+Signal: {signal['signal']}
 
-    Validation:
-    """
+Validation:
+"""
 
         for check in checks:
             message += f"\n{check}"
+
+        return self.send(message)
+
+    def send_trade_opened(self, position):
+
+        message = (
+            "🤖 AEGIS AI\n\n"
+            "🟢 TRADE OPENED\n\n"
+            f"Symbol: {position.symbol}\n"
+            f"Type: {'BUY' if position.type == 0 else 'SELL'}\n"
+            f"Volume: {position.volume}\n\n"
+            f"Entry: {position.price_open}\n"
+            f"SL: {position.sl}\n"
+            f"TP: {position.tp}"
+        )
+
+        return self.send(message)
+
+    def send_trade_closed(self, ticket, deal=None):
+        
+        if deal is None:
+
+            message = (
+                "🤖 AEGIS AI\n\n"
+                "🔴 TRADE CLOSED\n\n"
+                f"Ticket: {ticket}"
+            )
+        else:
+
+            if deal.profit > 0:
+                status = "🎯 TAKE PROFIT"
+            elif deal.profit < 0:
+                status = "🛑 STOP LOSS"
+            else:
+                status = "⚪ BREAKEVEN"
+
+        message = (
+            f"🤖 AEGIS AI\n\n"
+            f"{status}\n\n"
+            f"Ticket: {ticket}\n"
+            f"Profit: {deal.profit:.2f}\n"
+            f"Close Price: {deal.price}"
+        )
 
         return self.send(message)
