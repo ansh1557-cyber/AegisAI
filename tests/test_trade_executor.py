@@ -9,6 +9,7 @@ from engine.risk_manager import RiskManager
 from engine.trade_validator import TradeValidator
 from engine.trade_executor import TradeExecutor
 from engine.config import DRY_RUN
+from engine.telegram import TelegramNotifier
 
 import MetaTrader5 as mt5
 
@@ -61,6 +62,8 @@ if validation["approved"]:
         signal,
         trade,
     )
+    
+    TelegramNotifier().send_trade(signal, trade)
 
     if DRY_RUN:
 
@@ -77,6 +80,11 @@ if validation["approved"]:
         print(f"Comment : {result.comment}")
 
 else:
+    
+    TelegramNotifier().send_rejection(
+        signal,
+        validation["checks"]
+    )
 
     print("\nTrade was rejected. No order created.")
 

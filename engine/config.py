@@ -31,4 +31,4 @@ MAX_LOT = 1.00
 LOT_STEP = 0.01
 
 # Trade Execution
-DRY_RUN = True
+DRY_RUN = False
