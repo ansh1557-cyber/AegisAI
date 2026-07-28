@@ -175,3 +175,162 @@
 2026-07-28 14:12:57,390 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
 2026-07-28 14:12:57,391 | INFO | Trading cycle completed.
 2026-07-28 14:12:57,391 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:13:18,730 | INFO | Launching Scheduler.
+2026-07-28 14:13:18,731 | INFO | Trading scheduler started.
+2026-07-28 14:13:18,732 | INFO | Trade monitor started.
+2026-07-28 14:13:18,732 | INFO | Starting trading cycle.
+2026-07-28 14:13:18,732 | INFO | Trading Engine started.
+2026-07-28 14:13:18,733 | INFO | Current Session: London
+2026-07-28 14:13:18,733 | INFO | Trading allowed.
+2026-07-28 14:13:20,097 | INFO | Trade approved.
+2026-07-28 14:13:20,098 | INFO | [OK] Signal: BUY
+2026-07-28 14:13:20,098 | INFO | [OK] Confidence: 70%
+2026-07-28 14:13:20,098 | INFO | [OK] H4 Bullish
+2026-07-28 14:13:20,099 | INFO | [OK] H1 Bullish
+2026-07-28 14:13:20,099 | INFO | [OK] Bullish Order Block
+2026-07-28 14:13:20,099 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:13:20,100 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:13:20,100 | INFO | [OK] Discount Zone
+2026-07-28 14:13:20,100 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:13:20,101 | INFO | Trading cycle completed.
+2026-07-28 14:13:20,101 | INFO | Trading cycle completed.
+2026-07-28 14:13:20,102 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:14:20,102 | INFO | Starting trading cycle.
+2026-07-28 14:14:20,103 | INFO | Trading Engine started.
+2026-07-28 14:14:20,103 | INFO | Current Session: London
+2026-07-28 14:14:20,104 | INFO | Trading allowed.
+2026-07-28 14:14:22,076 | INFO | Trade approved.
+2026-07-28 14:14:22,076 | INFO | [OK] Signal: BUY
+2026-07-28 14:14:22,076 | INFO | [OK] Confidence: 70%
+2026-07-28 14:14:22,077 | INFO | [OK] H4 Bullish
+2026-07-28 14:14:22,077 | INFO | [OK] H1 Bullish
+2026-07-28 14:14:22,077 | INFO | [OK] Bullish Order Block
+2026-07-28 14:14:22,078 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:14:22,078 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:14:22,078 | INFO | [OK] Discount Zone
+2026-07-28 14:14:22,079 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:14:22,079 | INFO | Trading cycle completed.
+2026-07-28 14:14:22,081 | INFO | Trading cycle completed.
+2026-07-28 14:14:22,081 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:15:22,082 | INFO | Starting trading cycle.
+2026-07-28 14:15:22,083 | INFO | Trading Engine started.
+2026-07-28 14:15:22,088 | INFO | Current Session: London
+2026-07-28 14:15:22,092 | INFO | Trading allowed.
+2026-07-28 14:15:24,038 | INFO | Trade approved.
+2026-07-28 14:15:24,038 | INFO | [OK] Signal: BUY
+2026-07-28 14:15:24,039 | INFO | [OK] Confidence: 70%
+2026-07-28 14:15:24,039 | INFO | [OK] H4 Bullish
+2026-07-28 14:15:24,040 | INFO | [OK] H1 Bullish
+2026-07-28 14:15:24,040 | INFO | [OK] Bullish Order Block
+2026-07-28 14:15:24,040 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:15:24,041 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:15:24,041 | INFO | [OK] Discount Zone
+2026-07-28 14:15:24,041 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:15:24,042 | INFO | Trading cycle completed.
+2026-07-28 14:15:24,043 | INFO | Trading cycle completed.
+2026-07-28 14:15:24,043 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:18:57,778 | INFO | Launching Scheduler.
+2026-07-28 14:18:57,796 | INFO | Trading scheduler started.
+2026-07-28 14:18:57,799 | INFO | Starting trading cycle.
+2026-07-28 14:18:57,800 | INFO | Trading Engine started.
+2026-07-28 14:18:57,801 | INFO | Trade monitor started.
+2026-07-28 14:18:57,812 | INFO | Current Session: London
+2026-07-28 14:18:57,831 | INFO | News Filter: No high-impact news.
+2026-07-28 14:18:59,533 | INFO | Trade approved.
+2026-07-28 14:18:59,533 | INFO | [OK] Signal: BUY
+2026-07-28 14:18:59,533 | INFO | [OK] Confidence: 70%
+2026-07-28 14:18:59,534 | INFO | [OK] H4 Bullish
+2026-07-28 14:18:59,534 | INFO | [OK] H1 Bullish
+2026-07-28 14:18:59,534 | INFO | [OK] Bullish Order Block
+2026-07-28 14:18:59,535 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:18:59,535 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:18:59,536 | INFO | [OK] Discount Zone
+2026-07-28 14:18:59,536 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:18:59,537 | INFO | Trading cycle completed.
+2026-07-28 14:18:59,538 | INFO | Trading cycle completed.
+2026-07-28 14:18:59,538 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:19:59,539 | INFO | Starting trading cycle.
+2026-07-28 14:19:59,539 | INFO | Trading Engine started.
+2026-07-28 14:19:59,540 | INFO | Current Session: London
+2026-07-28 14:19:59,540 | INFO | News Filter: No high-impact news.
+2026-07-28 14:20:02,084 | INFO | Trade approved.
+2026-07-28 14:20:02,085 | INFO | [OK] Signal: BUY
+2026-07-28 14:20:02,085 | INFO | [OK] Confidence: 70%
+2026-07-28 14:20:02,085 | INFO | [OK] H4 Bullish
+2026-07-28 14:20:02,086 | INFO | [OK] H1 Bullish
+2026-07-28 14:20:02,086 | INFO | [OK] Bullish Order Block
+2026-07-28 14:20:02,087 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:20:02,087 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:20:02,087 | INFO | [OK] Discount Zone
+2026-07-28 14:20:02,088 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:20:02,090 | INFO | Trading cycle completed.
+2026-07-28 14:20:02,093 | INFO | Trading cycle completed.
+2026-07-28 14:20:02,093 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:21:02,094 | INFO | Starting trading cycle.
+2026-07-28 14:21:02,094 | INFO | Trading Engine started.
+2026-07-28 14:21:02,095 | INFO | Current Session: London
+2026-07-28 14:21:02,096 | INFO | News Filter: No high-impact news.
+2026-07-28 14:21:03,446 | INFO | Trade approved.
+2026-07-28 14:21:03,446 | INFO | [OK] Signal: BUY
+2026-07-28 14:21:03,446 | INFO | [OK] Confidence: 70%
+2026-07-28 14:21:03,447 | INFO | [OK] H4 Bullish
+2026-07-28 14:21:03,447 | INFO | [OK] H1 Bullish
+2026-07-28 14:21:03,447 | INFO | [OK] Bullish Order Block
+2026-07-28 14:21:03,448 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:21:03,448 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:21:03,448 | INFO | [OK] Discount Zone
+2026-07-28 14:21:03,449 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:21:03,449 | INFO | Trading cycle completed.
+2026-07-28 14:21:03,451 | INFO | Trading cycle completed.
+2026-07-28 14:21:03,451 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:22:03,456 | INFO | Starting trading cycle.
+2026-07-28 14:22:03,457 | INFO | Trading Engine started.
+2026-07-28 14:22:03,458 | INFO | Current Session: London
+2026-07-28 14:22:03,459 | INFO | News Filter: No high-impact news.
+2026-07-28 14:22:06,946 | INFO | Trade approved.
+2026-07-28 14:22:06,946 | INFO | [OK] Signal: BUY
+2026-07-28 14:22:06,947 | INFO | [OK] Confidence: 70%
+2026-07-28 14:22:06,949 | INFO | [OK] H4 Bullish
+2026-07-28 14:22:06,949 | INFO | [OK] H1 Bullish
+2026-07-28 14:22:06,949 | INFO | [OK] Bullish Order Block
+2026-07-28 14:22:06,950 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:22:06,950 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:22:06,951 | INFO | [OK] Discount Zone
+2026-07-28 14:22:06,951 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:22:06,952 | INFO | Trading cycle completed.
+2026-07-28 14:22:06,953 | INFO | Trading cycle completed.
+2026-07-28 14:22:06,953 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:23:06,955 | INFO | Starting trading cycle.
+2026-07-28 14:23:06,955 | INFO | Trading Engine started.
+2026-07-28 14:23:06,956 | INFO | Current Session: London
+2026-07-28 14:23:06,956 | INFO | News Filter: No high-impact news.
+2026-07-28 14:23:09,100 | INFO | Trade approved.
+2026-07-28 14:23:09,100 | INFO | [OK] Signal: BUY
+2026-07-28 14:23:09,101 | INFO | [OK] Confidence: 70%
+2026-07-28 14:23:09,101 | INFO | [OK] H4 Bullish
+2026-07-28 14:23:09,101 | INFO | [OK] H1 Bullish
+2026-07-28 14:23:09,102 | INFO | [OK] Bullish Order Block
+2026-07-28 14:23:09,103 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:23:09,103 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:23:09,103 | INFO | [OK] Discount Zone
+2026-07-28 14:23:09,104 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:23:09,104 | INFO | Trading cycle completed.
+2026-07-28 14:23:09,105 | INFO | Trading cycle completed.
+2026-07-28 14:23:09,105 | INFO | Waiting 60 seconds before next cycle.
+2026-07-28 14:24:09,106 | INFO | Starting trading cycle.
+2026-07-28 14:24:09,107 | INFO | Trading Engine started.
+2026-07-28 14:24:09,110 | INFO | Current Session: London
+2026-07-28 14:24:09,111 | INFO | News Filter: No high-impact news.
+2026-07-28 14:24:10,865 | INFO | Trade approved.
+2026-07-28 14:24:10,866 | INFO | [OK] Signal: BUY
+2026-07-28 14:24:10,866 | INFO | [OK] Confidence: 70%
+2026-07-28 14:24:10,866 | INFO | [OK] H4 Bullish
+2026-07-28 14:24:10,866 | INFO | [OK] H1 Bullish
+2026-07-28 14:24:10,867 | INFO | [OK] Bullish Order Block
+2026-07-28 14:24:10,867 | INFO | [OK] Bullish Fair Value Gap
+2026-07-28 14:24:10,867 | INFO | [OK] Sell-side Liquidity Sweep
+2026-07-28 14:24:10,868 | INFO | [OK] Discount Zone
+2026-07-28 14:24:10,868 | WARNING | Matching Aegis AI trade already exists. Skipping execution.
+2026-07-28 14:24:10,869 | INFO | Trading cycle completed.
+2026-07-28 14:24:10,869 | INFO | Trading cycle completed.
+2026-07-28 14:24:10,870 | INFO | Waiting 60 seconds before next cycle.

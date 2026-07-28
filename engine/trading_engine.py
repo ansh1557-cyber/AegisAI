@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Trading Engine
-Version: 1.5.0
+Version: 1.6.0
 """
 
 from engine.multi_timeframe import MultiTimeframeAnalyzer
@@ -12,6 +12,7 @@ from engine.trade_validator import TradeValidator
 from engine.trade_executor import TradeExecutor
 from engine.telegram import TelegramNotifier
 from engine.session_filter import SessionFilter
+from engine.news_filter import NewsFilter
 from engine.config import DRY_RUN
 from engine.logger import logger
 
@@ -21,7 +22,6 @@ class TradingEngine:
     def analyze_market(self):
 
         analysis = MultiTimeframeAnalyzer().analyze()
-
         entry_price = analysis["M15"]["data"]["Close"].iloc[-1]
 
         return analysis, entry_price
@@ -35,9 +35,7 @@ class TradingEngine:
             "bias": bias,
         }
 
-        signal = EntryEngine().analyze(results)
-
-        return signal
+        return EntryEngine().analyze(results)
 
     def calculate_trade(self, analysis, signal, entry_price):
 
@@ -60,7 +58,6 @@ class TradingEngine:
 
             executor = TradeExecutor()
 
-            # Prevent duplicate trades
             if executor.has_open_trade(signal):
 
                 logger.warning(
@@ -141,9 +138,28 @@ class TradingEngine:
 
             return
 
-        print("Trading Allowed : YES\n")
+        print("Trading Allowed : YES")
 
-        logger.info("Trading allowed.")
+        # ==========================
+        # NEWS FILTER
+        # ==========================
+
+        news = NewsFilter()
+
+        print("\n========== NEWS FILTER ==========\n")
+        print(f"Status : {news.reason()}")
+
+        logger.info(f"News Filter: {news.reason()}")
+
+        if not news.allowed():
+
+            print("Trading Blocked : YES\n")
+
+            logger.warning("Trading skipped because of high-impact news.")
+
+            return
+
+        print("Trading Blocked : NO\n")
 
         # ==========================
         # MARKET ANALYSIS
@@ -173,14 +189,13 @@ class TradingEngine:
 
         for check in validation["checks"]:
 
-            clean_check = (
+            clean = (
                 check.replace("✅", "[OK]")
                      .replace("❌", "[FAIL]")
                      .replace("⚠", "[WARN]")
             )
 
-            logger.info(clean_check)
-
+            logger.info(clean)
             print(check)
 
         self.execute_trade(
