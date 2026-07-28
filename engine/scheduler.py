@@ -1,12 +1,13 @@
 """
 Aegis AI
 Module: Scheduler
-Version: 2.0.0
+Version: 2.1.0
 """
 
 import threading
 import time
 
+from engine.logger import logger
 from engine.trading_engine import TradingEngine
 from engine.trade_monitor import TradeMonitor
 
@@ -20,24 +21,29 @@ class Scheduler:
 
     def trading_loop(self):
 
-        print("\n========== TRADING LOOP ==========\n")
+        logger.info("Trading scheduler started.")
 
         while True:
 
-            print("Starting trading cycle...\n")
+            logger.info("Starting trading cycle.")
 
             self.engine.run()
 
-            print("\nTrading cycle finished.")
-            print("Waiting 60 seconds...\n")
+            logger.info("Trading cycle completed.")
+
+            logger.info("Waiting 60 seconds before next cycle.")
 
             time.sleep(60)
 
     def monitor_loop(self):
 
+        logger.info("Trade monitor started.")
+
         self.monitor.monitor()
 
     def run(self):
+
+        logger.info("Launching Scheduler.")
 
         trading_thread = threading.Thread(
             target=self.trading_loop,

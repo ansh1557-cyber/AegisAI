@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Trading Engine
-Version: 1.3.0
+Version: 1.5.0
 """
 
 from engine.multi_timeframe import MultiTimeframeAnalyzer
@@ -11,7 +11,9 @@ from engine.risk_manager import RiskManager
 from engine.trade_validator import TradeValidator
 from engine.trade_executor import TradeExecutor
 from engine.telegram import TelegramNotifier
+from engine.session_filter import SessionFilter
 from engine.config import DRY_RUN
+from engine.logger import logger
 
 
 class TradingEngine:
@@ -39,22 +41,18 @@ class TradingEngine:
 
     def calculate_trade(self, analysis, signal, entry_price):
 
-        trade = RiskManager().calculate(
+        return RiskManager().calculate(
             analysis=analysis,
             signal=signal,
             entry_price=entry_price,
         )
 
-        return trade
-
     def validate_trade(self, analysis, signal):
 
-        validation = TradeValidator().validate(
+        return TradeValidator().validate(
             analysis,
             signal,
         )
-
-        return validation
 
     def execute_trade(self, signal, trade, validation):
 
@@ -62,8 +60,12 @@ class TradingEngine:
 
             executor = TradeExecutor()
 
-            # Trade Guard
+            # Prevent duplicate trades
             if executor.has_open_trade(signal):
+
+                logger.warning(
+                    "Matching Aegis AI trade already exists. Skipping execution."
+                )
 
                 print("\n========== TRADE GUARD ==========\n")
                 print("⚠ Matching Aegis AI trade already exists.")
@@ -83,11 +85,20 @@ class TradingEngine:
 
             if DRY_RUN:
 
+                logger.info("DRY RUN completed.")
+
                 print("\n========== DRY RUN COMPLETED ==========\n")
 
             else:
 
                 result = executor.execute(request)
+
+                logger.info(
+                    f"Trade executed | "
+                    f"Retcode={result.retcode} "
+                    f"Order={result.order} "
+                    f"Deal={result.deal}"
+                )
 
                 print("\n========== MT5 RESULT ==========\n")
                 print(f"Retcode : {result.retcode}")
@@ -102,11 +113,41 @@ class TradingEngine:
                 validation["checks"],
             )
 
+            logger.warning("Trade rejected.")
+
             print("\nTrade was rejected. No order created.")
 
     def run(self):
 
-        print("\n========== TRADING ENGINE ==========\n")
+        logger.info("Trading Engine started.")
+
+        # ==========================
+        # SESSION FILTER
+        # ==========================
+
+        session = SessionFilter()
+
+        print("\n========== SESSION ==========\n")
+        print(f"Current Session : {session.current_session()}")
+
+        logger.info(f"Current Session: {session.current_session()}")
+
+        if not session.allowed():
+
+            print("Trading Allowed : NO")
+            print("Skipping trading cycle.\n")
+
+            logger.info("Trading skipped because market session is inactive.")
+
+            return
+
+        print("Trading Allowed : YES\n")
+
+        logger.info("Trading allowed.")
+
+        # ==========================
+        # MARKET ANALYSIS
+        # ==========================
 
         analysis, entry_price = self.analyze_market()
 
@@ -126,11 +167,20 @@ class TradingEngine:
         print("\n========== TRADE VALIDATION ==========\n")
 
         if validation["approved"]:
-            print("✅ TRADE APPROVED")
+            logger.info("Trade approved.")
         else:
-            print("❌ TRADE REJECTED")
+            logger.warning("Trade rejected.")
 
         for check in validation["checks"]:
+
+            clean_check = (
+                check.replace("✅", "[OK]")
+                     .replace("❌", "[FAIL]")
+                     .replace("⚠", "[WARN]")
+            )
+
+            logger.info(clean_check)
+
             print(check)
 
         self.execute_trade(
@@ -138,6 +188,8 @@ class TradingEngine:
             trade,
             validation,
         )
+
+        logger.info("Trading cycle completed.")
 
         return {
             "analysis": analysis,
