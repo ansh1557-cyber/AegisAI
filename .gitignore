@@ -17,3 +17,11 @@ venv/
 Thumbs.db
 
 .env
+
+# Database
+aegis.db
+
+
+# Logs
+logs/
+*.log
