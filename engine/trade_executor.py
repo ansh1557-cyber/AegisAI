@@ -11,6 +11,33 @@ from engine.config import SYMBOL, DRY_RUN, MAGIC_NUMBER
 
 
 class TradeExecutor:
+    
+    def has_open_trade(self, signal):
+
+        import MetaTrader5 as mt5
+
+        from engine.config import SYMBOL, MAGIC_NUMBER
+
+        positions = mt5.positions_get(symbol=SYMBOL)
+
+        if positions is None:
+            return False
+
+        desired_type = (
+            mt5.ORDER_TYPE_BUY
+            if signal["signal"] == "BUY"
+            else mt5.ORDER_TYPE_SELL
+        )
+
+        for position in positions:
+
+            if (
+               position.magic == MAGIC_NUMBER
+               and position.type == desired_type
+            ):
+               return True
+
+        return False
 
     def build_order(self, signal, trade):
 

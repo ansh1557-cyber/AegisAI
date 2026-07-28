@@ -5,7 +5,7 @@ Version: 1.0.0
 """
 
 from engine.trade_monitor import TradeMonitor
-from engine.trading_engine import TradingEngine
+from engine.scheduler import Scheduler
 
 
 def main():
@@ -15,12 +15,9 @@ def main():
     print("Autonomous Trading System")
     print("=" * 50)
     
-    engine = TradingEngine()
+    scheduler = Scheduler()
 
-    engine.run()
-    monitor = TradeMonitor()
-    monitor.monitor()
-
-
+    scheduler.run()
+    
 if __name__ == "__main__":
     main()

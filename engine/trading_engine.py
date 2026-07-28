@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Trading Engine
-Version: 1.2.0
+Version: 1.3.0
 """
 
 from engine.multi_timeframe import MultiTimeframeAnalyzer
@@ -55,43 +55,52 @@ class TradingEngine:
         )
 
         return validation
-    
+
     def execute_trade(self, signal, trade, validation):
 
         if validation["approved"]:
 
-           executor = TradeExecutor()
+            executor = TradeExecutor()
 
-           request = executor.build_order(
-               signal,
-               trade,
+            # Trade Guard
+            if executor.has_open_trade(signal):
+
+                print("\n========== TRADE GUARD ==========\n")
+                print("⚠ Matching Aegis AI trade already exists.")
+                print("Skipping execution.\n")
+
+                return
+
+            request = executor.build_order(
+                signal,
+                trade,
             )
 
-           TelegramNotifier().send_trade(
-               signal,
-               trade,
+            TelegramNotifier().send_trade(
+                signal,
+                trade,
             )
 
-           if DRY_RUN:
+            if DRY_RUN:
 
-               print("\n========== DRY RUN COMPLETED ==========\n")
+                print("\n========== DRY RUN COMPLETED ==========\n")
 
-           else:
+            else:
 
-               result = executor.execute(request)
+                result = executor.execute(request)
 
-               print("\n========== MT5 RESULT ==========\n")
-               print(f"Retcode : {result.retcode}")
-               print(f"Order   : {result.order}")
-               print(f"Deal    : {result.deal}")
-               print(f"Comment : {result.comment}")
+                print("\n========== MT5 RESULT ==========\n")
+                print(f"Retcode : {result.retcode}")
+                print(f"Order   : {result.order}")
+                print(f"Deal    : {result.deal}")
+                print(f"Comment : {result.comment}")
 
         else:
 
             TelegramNotifier().send_rejection(
                 signal,
                 validation["checks"],
-           )
+            )
 
             print("\nTrade was rejected. No order created.")
 
@@ -123,7 +132,7 @@ class TradingEngine:
 
         for check in validation["checks"]:
             print(check)
-            
+
         self.execute_trade(
             signal,
             trade,
