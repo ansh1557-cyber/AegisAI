@@ -6,12 +6,17 @@ Version: 0.4.0
 
 import time
 import MetaTrader5 as mt5
+from datetime import datetime
 
 from engine.telegram import TelegramNotifier
 from engine.config import SYMBOL, MAGIC_NUMBER
+from engine.database import Database
 
 
 class TradeMonitor:
+
+    def __init__(self):
+        self.db = Database()
 
     def get_open_positions(self):
 
@@ -51,7 +56,10 @@ class TradeMonitor:
 
         print("Monitoring trades... Press Ctrl+C to stop.\n")
 
-        previous_tickets = set()
+        previous_tickets = {
+            position.ticket
+            for position in self.get_open_positions()
+        }
         trade_history = {}
 
         try:
@@ -105,6 +113,14 @@ class TradeMonitor:
 
                         print(f"Profit : {deal.profit}")
                         print(f"Price  : {deal.price}")
+                        
+                        self.db.close_trade(
+                            ticket=ticket,
+                            profit=deal.profit,
+                            close_time=str(datetime.now()),
+                        )
+
+                        print("Database updated successfully.")
 
                     TelegramNotifier().send_trade_closed(ticket, deal)
 

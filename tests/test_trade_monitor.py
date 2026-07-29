@@ -11,8 +11,6 @@ if not mt5.initialize():
 
 monitor = TradeMonitor()
 
-monitor = TradeMonitor()
-
 monitor.monitor()
 
 mt5.shutdown()
