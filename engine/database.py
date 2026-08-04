@@ -1,10 +1,12 @@
 """
 Aegis AI
-Module: Database
-Version: 1.1.0
+Module: Database Manager
+Version: 0.3.0
 """
 
 import sqlite3
+from datetime import datetime
+DATABASE_NAME = "aegis.db"
 
 
 class Database:
@@ -12,49 +14,55 @@ class Database:
     def __init__(self):
 
         self.connection = sqlite3.connect(
-            "aegis.db",
-            check_same_thread=False,
+            DATABASE_NAME,
+            check_same_thread=False
         )
 
         self.cursor = self.connection.cursor()
 
-        self.create_tables()
+        self.create_table()
 
-    def create_tables(self):
 
-        self.cursor.execute("""
-        CREATE TABLE IF NOT EXISTS trades (
+    def create_table(self):
 
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
+        self.cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS trades
+            (
 
-            ticket INTEGER,
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
 
-            symbol TEXT,
+                ticket INTEGER,
 
-            signal TEXT,
+                symbol TEXT,
 
-            volume REAL,
+                signal TEXT,
 
-            entry REAL,
+                volume REAL,
 
-            stop_loss REAL,
+                entry REAL,
 
-            take_profit REAL,
+                stop_loss REAL,
 
-            confidence INTEGER,
+                take_profit REAL,
 
-            status TEXT,
+                confidence INTEGER,
 
-            profit REAL,
+                status TEXT,
 
-            open_time TEXT,
+                profit REAL DEFAULT 0,
 
-            close_time TEXT
+                open_time TEXT,
 
+                close_time TEXT
+
+            )
+            """
         )
-        """)
 
         self.connection.commit()
+
+
 
     def save_trade(
         self,
@@ -67,30 +75,12 @@ class Database:
         take_profit,
         confidence,
         status,
-        open_time,
+        open_time
     ):
 
         self.cursor.execute(
             """
-            INSERT INTO trades (
-
-                ticket,
-                symbol,
-                signal,
-                volume,
-                entry,
-                stop_loss,
-                take_profit,
-                confidence,
-                status,
-                profit,
-                open_time,
-                close_time
-
-            )
-
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
+            INSERT INTO trades
             (
                 ticket,
                 symbol,
@@ -101,20 +91,88 @@ class Database:
                 take_profit,
                 confidence,
                 status,
-                0,
-                open_time,
-                None,
-            ),
+                open_time
+            )
+
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+
+            """,
+
+            (
+                ticket,
+                symbol,
+                signal,
+                volume,
+                entry,
+                stop_loss,
+                take_profit,
+                confidence,
+                status,
+                open_time
+            )
         )
+
 
         self.connection.commit()
 
-    def close_trade(
+
+
+    # ==========================
+    # GET ALL TRADES
+    # ==========================
+
+    def get_trades(self):
+
+        self.cursor.execute(
+            """
+            SELECT *
+            FROM trades
+            ORDER BY id DESC
+            """
+        )
+
+        return self.cursor.fetchall()
+
+
+
+    # ==========================
+    # GET SINGLE TRADE
+    # ==========================
+
+    def get_trade(self, ticket):
+
+        self.cursor.execute(
+            """
+            SELECT *
+            FROM trades
+            WHERE ticket=?
+            """,
+
+            (
+                ticket,
+            )
+        )
+
+        return self.cursor.fetchone()
+
+
+
+    # ==========================
+    # UPDATE TRADE
+    # ==========================
+
+    def update_trade(
         self,
         ticket,
+        status,
         profit,
-        close_time,
+        close_time=None
     ):
+
+        if close_time is None:
+
+            close_time = str(datetime.now())
+
 
         self.cursor.execute(
             """
@@ -122,35 +180,51 @@ class Database:
 
             SET
 
-                profit=?,
-                status=?,
-                close_time=?
+            status=?,
+            profit=?,
+            close_time=?
 
             WHERE ticket=?
+
             """,
+
             (
+                status,
                 profit,
-                "CLOSED",
                 close_time,
-                ticket,
-            ),
+                ticket
+            )
         )
+
 
         self.connection.commit()
 
-    def get_trade(self, ticket):
+
+
+    # ==========================
+    # COUNT OPEN TRADES
+    # ==========================
+
+    def count_open_trades(self):
 
         self.cursor.execute(
-            "SELECT * FROM trades WHERE ticket=?",
-            (ticket,),
+            """
+            SELECT COUNT(*)
+            FROM trades
+            WHERE status='OPEN'
+            """
         )
 
-        return self.cursor.fetchone()
+        result = self.cursor.fetchone()
 
-    def get_all_trades(self):
+        return result[0]
 
-        self.cursor.execute(
-            "SELECT * FROM trades ORDER BY id DESC"
-        )
 
-        return self.cursor.fetchall()
+
+    # ==========================
+    # CLOSE DATABASE
+    # ==========================
+
+    def close(self):
+
+        self.connection.close()

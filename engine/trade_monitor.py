@@ -116,6 +116,7 @@ class TradeMonitor:
                         
                         self.db.close_trade(
                             ticket=ticket,
+                            status="CLOSED",
                             profit=deal.profit,
                             close_time=str(datetime.now()),
                         )

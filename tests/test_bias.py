@@ -25,7 +25,16 @@ print("Bias:", bias["bias"])
 print("Confidence:", f'{bias["confidence"]}%')
 print("Score:", bias["score"])
 
-print("\nReasons:")
+print("\nBUY Reasons:")
+if bias["buy_reasons"]:
+    for reason in bias["buy_reasons"]:
+        print("+", reason)
+else:
+    print("None")
 
-for reason in bias["reasons"]:
-    print(f"✓ {reason}")
+print("\nSELL Reasons:")
+if bias["sell_reasons"]:
+    for reason in bias["sell_reasons"]:
+        print("-", reason)
+else:
+    print("None")

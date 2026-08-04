@@ -1,98 +1,135 @@
 """
 Aegis AI
 Module: Market Bias Engine
-Version: 0.5.0
+Version: 1.0.0
 """
 
 
 class BiasEngine:
 
     def analyze(self, results):
-        
-        
-        score = 0
-        reasons = []
 
-        # -------------------------
-        # H4 (Highest Priority)
-        # -------------------------
+        buy_score = 0
+        sell_score = 0
+
+        buy_reasons = []
+        sell_reasons = []
+
+        # ==========================================
+        # H4 ANALYSIS
+        # ==========================================
 
         h4 = results["H4"]
 
-        if h4["structure"]["trend"] == "Bullish":
-            score += 3
-            reasons.append("H4 Bullish Trend")
-        elif h4["structure"]["trend"] == "Bearish":
-            score -= 3
-            reasons.append("H4 Bearish Trend")
+        trend = h4["structure"]["trend"]
 
-        if h4["premium_discount"]["current_zone"] == "Discount":
-            score += 2
-            reasons.append("H4 Discount Zone")
-        else:
-            score -= 1
-            reasons.append("H4 Premium Zone")
+        if trend == "Bullish":
+            buy_score += 30
+            buy_reasons.append("H4 Bullish Trend")
 
-        # -------------------------
-        # H1
-        # -------------------------
+        elif trend == "Bearish":
+            sell_score += 30
+            sell_reasons.append("H4 Bearish Trend")
+
+        zone = h4["premium_discount"]["current_zone"]
+
+        if zone == "Discount":
+            buy_score += 10
+            buy_reasons.append("Discount Zone")
+
+        elif zone == "Premium":
+            sell_score += 10
+            sell_reasons.append("Premium Zone")
+
+        # ==========================================
+        # H1 ANALYSIS
+        # ==========================================
 
         h1 = results["H1"]
 
+        trend = h1["structure"]["trend"]
+
+        if trend == "Bullish":
+            buy_score += 20
+            buy_reasons.append("H1 Bullish Trend")
+
+        elif trend == "Bearish":
+            sell_score += 20
+            sell_reasons.append("H1 Bearish Trend")
+
         if h1["bos"]["bullish_bos"]:
-            score += 2
-            reasons.append("H1 Bullish BOS")
+            buy_score += 15
+            buy_reasons.append("Bullish BOS")
 
         if h1["bos"]["bearish_bos"]:
-            score -= 2
-            reasons.append("H1 Bearish BOS")
+            sell_score += 15
+            sell_reasons.append("Bearish BOS")
 
         if h1["choch"]["bullish_choch"]:
-            score += 1
-            reasons.append("H1 Bullish CHoCH")
+            buy_score += 10
+            buy_reasons.append("Bullish CHoCH")
 
         if h1["choch"]["bearish_choch"]:
-            score -= 1
-            reasons.append("H1 Bearish CHoCH")
+            sell_score += 10
+            sell_reasons.append("Bearish CHoCH")
 
-        # -------------------------
-        # M15
-        # -------------------------
+        # ==========================================
+        # M15 ANALYSIS
+        # ==========================================
 
         m15 = results["M15"]
 
-        if len(m15["order_blocks"]["bullish_blocks"]) > 0:
-           score += 1
-           reasons.append("Bullish Order Block")
+        bullish_blocks = len(m15["order_blocks"]["bullish_blocks"])
+        bearish_blocks = len(m15["order_blocks"]["bearish_blocks"])
 
-        if len(m15["fvg"]["bullish_fvg"]) > 0:
-            score += 1
-            reasons.append("Bullish Fair Value Gap")
+        if bullish_blocks > 0:
+            buy_score += 10
+            buy_reasons.append(f"{bullish_blocks} Bullish Order Blocks")
 
-        # -------------------------
-        # Final Decision
-        # -------------------------
+        if bearish_blocks > 0:
+            sell_score += 10
+            sell_reasons.append(f"{bearish_blocks} Bearish Order Blocks")
 
-        if score >= 5:
-            bias = "STRONG BUY"
+        bullish_fvg = len(m15["fvg"]["bullish_fvg"])
+        bearish_fvg = len(m15["fvg"]["bearish_fvg"])
 
-        elif score >= 2:
-            bias = "BUY"
+        if bullish_fvg > 0:
+            buy_score += 10
+            buy_reasons.append(f"{bullish_fvg} Bullish FVG")
 
-        elif score <= -5:
-            bias = "STRONG SELL"
+        if bearish_fvg > 0:
+            sell_score += 10
+            sell_reasons.append(f"{bearish_fvg} Bearish FVG")
 
-        elif score <= -2:
-            bias = "SELL"
+        # ==========================================
+        # FINAL DECISION
+        # ==========================================
+
+        if buy_score > sell_score:
+            signal = "BUY"
+
+        elif sell_score > buy_score:
+            signal = "SELL"
 
         else:
-            bias = "NEUTRAL"
+            signal = "NEUTRAL"
 
-        confidence = min(abs(score) * 10, 100)
+        total = buy_score + sell_score
+
+        if total == 0:
+            confidence = 0
+        else:
+            confidence = int(max(buy_score, sell_score) / total * 100)
+
+        score = buy_score - sell_score
 
         return {
-            "bias": bias,
+            "bias": signal,
+            "signal": signal,
             "confidence": confidence,
             "score": score,
-            "reasons": reasons,
+            "buy_score": buy_score,
+            "sell_score": sell_score,
+            "buy_reasons": buy_reasons,
+            "sell_reasons": sell_reasons,
         }

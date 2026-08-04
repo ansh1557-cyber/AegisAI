@@ -1,10 +1,9 @@
 """
 Aegis AI
 Module: Trading Engine
-Version: 1.7.0
+Version: 1.6.1
 """
 
-import MetaTrader5 as mt5
 
 from engine.multi_timeframe import MultiTimeframeAnalyzer
 from engine.bias import BiasEngine
@@ -15,8 +14,13 @@ from engine.trade_executor import TradeExecutor
 from engine.telegram import TelegramNotifier
 from engine.session_filter import SessionFilter
 from engine.news_filter import NewsFilter
+from engine.trade_guard import TradeGuard
+from engine.risk_validator import RiskValidator
+from engine.trade_synchronizer import TradeSynchronizer
+
 from engine.config import DRY_RUN
 from engine.logger import logger
+
 
 
 class TradingEngine:
@@ -26,7 +30,9 @@ class TradingEngine:
 
         analysis = MultiTimeframeAnalyzer().analyze()
 
-        entry_price = analysis["M15"]["data"]["Close"].iloc[-1]
+        entry_price = (
+            analysis["M15"]["data"]["Close"].iloc[-1]
+        )
 
         return analysis, entry_price
 
@@ -53,9 +59,9 @@ class TradingEngine:
     ):
 
         return RiskManager().calculate(
-            analysis=analysis,
-            signal=signal,
-            entry_price=entry_price,
+            analysis,
+            signal,
+            entry_price
         )
 
 
@@ -68,140 +74,127 @@ class TradingEngine:
 
         return TradeValidator().validate(
             analysis,
-            signal,
+            signal
         )
 
 
 
-    def execute_trade(
-        self,
-        signal,
-        trade,
-        validation
-    ):
+    def execute_trade(self, signal, trade, validation):
 
 
-        if not validation["approved"]:
+        risk_check = RiskValidator().validate(
+            signal,
+            trade
+        )
 
-            TelegramNotifier().send_rejection(
+
+        print("\n========== RISK CHECK ==========\n")
+
+
+        for check in risk_check["checks"]:
+
+           print(check)
+
+
+
+        if not risk_check["approved"]:
+
+
+            logger.warning(
+                "Trade rejected by Risk Validator."
+            )
+
+
+            print(
+               "\nTrade rejected by Risk Validator."
+            )
+
+            return
+
+
+        guard = TradeGuard()
+
+
+        if not guard.can_trade(signal):
+
+            logger.warning(
+                "Trade blocked by Trade Guard."
+            )
+
+            print(
+                "\nTrade blocked by Trade Guard."
+            )
+
+            return
+
+
+
+        if validation["approved"]:
+
+
+            executor = TradeExecutor()
+
+
+            if executor.has_open_trade(signal):
+
+                logger.warning(
+                    "Existing Aegis trade found."
+                )
+
+                print(
+                    "\nExisting trade detected. Skipping."
+                )
+
+                return
+
+
+
+            request = executor.build_order(
                 signal,
-                validation["checks"],
+                trade
             )
 
-            logger.warning(
-                "Trade rejected."
+
+            TelegramNotifier().send_trade(
+                signal,
+                trade
             )
 
-            print(
-                "\nTrade was rejected. No order created."
+
+            if DRY_RUN:
+
+                print(
+                    "\n========== DRY RUN =========="
+                )
+
+                return
+
+
+
+            result = executor.execute(
+                request,
+                signal,
+                trade
             )
-
-            return
-
-
-
-        executor = TradeExecutor()
-
-
-
-        if executor.has_open_trade(signal):
-
-            logger.warning(
-                "Matching Aegis AI trade already exists. Skipping execution."
-            )
-
-            print(
-                "\n========== TRADE GUARD ==========\n"
-            )
-
-            print(
-                "⚠ Matching Aegis AI trade already exists."
-            )
-
-            print(
-                "Skipping execution.\n"
-            )
-
-            return
-
-
-
-        request = executor.build_order(
-            signal,
-            trade,
-        )
-
-
-
-        TelegramNotifier().send_trade(
-            signal,
-            trade,
-        )
-
-
-
-        if DRY_RUN:
-
-            logger.info(
-                "DRY RUN completed."
-            )
-
-            print(
-                "\n========== DRY RUN COMPLETED ==========\n"
-            )
-
-            return
-
-
-
-        result = executor.execute(
-            request,
-            signal,
-            trade,
-        )
-
-
-
-        if result.retcode == mt5.TRADE_RETCODE_DONE:
 
 
             logger.info(
                 f"Trade executed | "
-                f"Retcode={result.retcode} "
-                f"Order={result.order} "
-                f"Deal={result.deal}"
-            )
-
-
-            print(
-                "\n========== MT5 SUCCESS ==========\n"
-            )
-
-            print(
-                f"Order : {result.order}"
-            )
-
-            print(
-                f"Deal  : {result.deal}"
+                f"Retcode={result.retcode}"
             )
 
 
         else:
 
 
+            TelegramNotifier().send_rejection(
+                signal,
+                validation["checks"]
+            )
+
+
             logger.warning(
-                f"Trade failed | "
-                f"Retcode={result.retcode} "
-                f"Reason={result.comment}"
-            )
-
-
-            print(
-                "\n========== MT5 FAILED ==========\n"
-            )
-
-            print(
-                f"Reason : {result.comment}"
+                "Trade rejected."
             )
 
 
@@ -210,16 +203,11 @@ class TradingEngine:
 
         try:
 
-
             logger.info(
                 "Trading Engine started."
             )
-
-
-
-            # ==========================
-            # SESSION FILTER
-            # ==========================
+  
+            TradeSynchronizer().sync()
 
             session = SessionFilter()
 
@@ -233,35 +221,14 @@ class TradingEngine:
             )
 
 
-            logger.info(
-                f"Current Session: {session.current_session()}"
-            )
-
-
             if not session.allowed():
 
                 print(
-                    "Trading Allowed : NO"
+                    "Trading not allowed."
                 )
-
-                print(
-                    "Skipping trading cycle.\n"
-                )
-
 
                 return
 
-
-
-            print(
-                "Trading Allowed : YES"
-            )
-
-
-
-            # ==========================
-            # NEWS FILTER
-            # ==========================
 
 
             news = NewsFilter()
@@ -271,40 +238,26 @@ class TradingEngine:
                 "\n========== NEWS FILTER ==========\n"
             )
 
-
             print(
                 f"Status : {news.reason()}"
-            )
-
-
-            logger.info(
-                f"News Filter: {news.reason()}"
             )
 
 
             if not news.allowed():
 
                 print(
-                    "Trading Blocked : YES\n"
+                    "Trading blocked because of news."
                 )
-
 
                 return
 
 
 
-            print(
-                "Trading Blocked : NO\n"
+            analysis, entry_price = (
+                self.analyze_market()
             )
-
-
-
-            # ==========================
-            # MARKET ANALYSIS
-            # ==========================
-
-
-            analysis, entry_price = self.analyze_market()
+            
+            TradeSynchronizer().sync()
 
 
 
@@ -313,20 +266,17 @@ class TradingEngine:
             )
 
 
-
             trade = self.calculate_trade(
                 analysis,
                 signal,
-                entry_price,
+                entry_price
             )
-
 
 
             validation = self.validate_trade(
                 analysis,
-                signal,
+                signal
             )
-
 
 
             print(
@@ -334,29 +284,16 @@ class TradingEngine:
             )
 
 
-
             for check in validation["checks"]:
 
-
-                clean = (
-                    check.replace("✅", "[OK]")
-                    .replace("❌", "[FAIL]")
-                    .replace("⚠", "[WARN]")
-                )
-
-
-                logger.info(clean)
-
                 print(check)
-
 
 
             self.execute_trade(
                 signal,
                 trade,
-                validation,
+                validation
             )
-
 
 
             logger.info(
@@ -372,10 +309,9 @@ class TradingEngine:
 
                 "trade": trade,
 
-                "validation": validation,
+                "validation": validation
 
             }
-
 
 
         except Exception as e:

@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Entry Engine
-Version: 0.1.0
+Version: 0.2.0
 """
 
 
@@ -14,13 +14,15 @@ class EntryEngine:
         signal = {
             "signal": "WAIT",
             "confidence": bias["confidence"],
-            "reasons": bias["reasons"],
+            "buy_reasons": bias["buy_reasons"],
+            "sell_reasons": bias["sell_reasons"],
+            "reasons": bias["buy_reasons"] + bias["sell_reasons"],
         }
 
-        if bias["bias"] == "STRONG BUY":
+        if bias["bias"] == "BUY":
             signal["signal"] = "BUY"
 
-        elif bias["bias"] == "STRONG SELL":
+        elif bias["bias"] == "SELL":
             signal["signal"] = "SELL"
 
         return signal
