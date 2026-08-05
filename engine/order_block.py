@@ -25,29 +25,29 @@ class OrderBlockEngine:
 
             # Last bearish candle before bullish expansion
             if (
-                current["Close"] < current["Open"]
-                and nxt["Close"] > current["High"]
+                current["close"] < current["open"]
+                and nxt["close"] > current["high"]
             ):
 
                 self.bullish_blocks.append(
                     {
                         "index": i,
-                        "high": current["High"],
-                        "low": current["Low"],
+                        "high": current["high"],
+                        "low": current["low"],
                     }
                 )
 
             # Last bullish candle before bearish expansion
             if (
-                current["Close"] > current["Open"]
-                and nxt["Close"] < current["Low"]
+                current["close"] > current["open"]
+                and nxt["close"] < current["low"]
             ):
 
                 self.bearish_blocks.append(
                     {
                         "index": i,
-                        "high": current["High"],
-                        "low": current["Low"],
+                        "high": current["high"],
+                        "low": current["low"],
                     }
                 )
 

@@ -22,7 +22,7 @@ class PremiumDiscountEngine:
 
         equilibrium = (highest + lowest) / 2
 
-        current_price = df["Close"].iloc[-1]
+        current_price = df["close"].iloc[-1]
 
         if current_price > equilibrium:
             zone = "Premium"

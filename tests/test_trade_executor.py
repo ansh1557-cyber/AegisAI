@@ -17,7 +17,7 @@ import MetaTrader5 as mt5
 analysis = MultiTimeframeAnalyzer().analyze()
 
 # Get current price
-entry_price = analysis["M15"]["data"]["Close"].iloc[-1]
+entry_price = analysis["M15"]["data"]["close"].iloc[-1]
 
 # Market bias
 bias = BiasEngine().analyze(analysis)

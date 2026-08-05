@@ -25,14 +25,14 @@ class MarketStructureEngine:
 
         for i in range(lookback, len(df) - lookback):
 
-            high = df["High"].iloc[i]
-            low = df["Low"].iloc[i]
+            high = df["high"].iloc[i]
+            low = df["low"].iloc[i]
 
-            left_high = df["High"].iloc[i - lookback:i]
-            right_high = df["High"].iloc[i + 1:i + lookback + 1]
+            left_high = df["high"].iloc[i - lookback:i]
+            right_high = df["high"].iloc[i + 1:i + lookback + 1]
 
-            left_low = df["Low"].iloc[i - lookback:i]
-            right_low = df["Low"].iloc[i + 1:i + lookback + 1]
+            left_low = df["low"].iloc[i - lookback:i]
+            right_low = df["low"].iloc[i + 1:i + lookback + 1]
 
             # Swing High
             if high > max(left_high) and high > max(right_high):

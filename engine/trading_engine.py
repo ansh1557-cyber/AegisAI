@@ -31,7 +31,7 @@ class TradingEngine:
         analysis = MultiTimeframeAnalyzer().analyze()
 
         entry_price = (
-            analysis["M15"]["data"]["Close"].iloc[-1]
+            analysis["M15"]["data"]["close"].iloc[-1]
         )
 
         return analysis, entry_price

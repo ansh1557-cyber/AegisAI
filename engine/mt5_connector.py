@@ -34,14 +34,6 @@ class MT5Connector:
 
         df = pd.DataFrame(rates)
 
-        df.rename(
-            columns={
-                "open": "Open",
-                "high": "High",
-                "low": "Low",
-                "close": "Close",
-            },
-            inplace=True,
-        )
+        df.columns = [column.lower() for column in df.columns]
 
         return df

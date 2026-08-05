@@ -26,7 +26,7 @@ class BOSEngine:
         if len(df) == 0:
             return self._result()
 
-        last_close = df["Close"].iloc[-1]
+        last_close = df["close"].iloc[-1]
 
         # Bullish BOS
         if trend == "Bullish" and swing_highs:

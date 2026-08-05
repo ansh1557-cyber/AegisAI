@@ -22,7 +22,7 @@ class CHOCHEngine:
         if len(df) == 0:
             return self._result()
 
-        last_close = df["Close"].iloc[-1]
+        last_close = df["close"].iloc[-1]
 
         # Bullish CHoCH
         if trend == "Bearish" and swing_highs:

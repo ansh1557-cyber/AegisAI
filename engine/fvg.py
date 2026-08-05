@@ -16,19 +16,19 @@ class FVGEngine:
             c3 = df.iloc[i + 1]
 
             # Bullish FVG
-            if c1["High"] < c3["Low"]:
+            if c1["high"] < c3["low"]:
                 bullish_fvg.append({
                     "index": i,
-                    "top": c3["Low"],
-                    "bottom": c1["High"],
+                    "top": c3["low"],
+                    "bottom": c1["high"],
                 })
 
             # Bearish FVG
-            if c1["Low"] > c3["High"]:
+            if c1["low"] > c3["high"]:
                 bearish_fvg.append({
                     "index": i,
-                    "top": c1["Low"],
-                    "bottom": c3["High"],
+                    "top": c1["low"],
+                    "bottom": c3["high"],
                 })
 
         return {

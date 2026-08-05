@@ -16,7 +16,7 @@ print("\n===== M15 Analysis =====")
 pprint(analysis["M15"])
 
 
-entry_price = analysis["M15"]["data"]["Close"].iloc[-1]
+entry_price = analysis["M15"]["data"]["close"].iloc[-1]
 
 # Determine market bias
 bias = BiasEngine().analyze(analysis)

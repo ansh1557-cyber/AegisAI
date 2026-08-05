@@ -5,6 +5,8 @@ Version: 0.3.1
 """
 
 from engine.symbol_info import SymbolInfo
+from engine.atr import ATRIndicator
+from engine.config import ATR_MULTIPLIER
 
 from engine.config import (
     ACCOUNT_BALANCE,
@@ -20,6 +22,7 @@ class RiskManager:
     def __init__(self):
 
         self.symbol = SymbolInfo()
+        self.atr = ATRIndicator()
 
 
 
@@ -48,7 +51,14 @@ class RiskManager:
 
 
         m15 = analysis["M15"]
+        
+        atr = self.atr.calculate(m15["data"])
+        
+        if atr is None:
+            return None
 
+        atr_multiplier = ATR_MULTIPLIER
+        
         swings = m15["swings"]
 
 
@@ -77,8 +87,14 @@ class RiskManager:
         if signal["signal"] == "BUY":
 
 
-            stop_loss = latest_swing_low - buffer
+            atr_stop = atr * ATR_MULTIPLIER
 
+            structure_stop = latest_swing_low - buffer
+
+            stop_loss = min(
+                structure_stop,
+                entry_price - atr_stop
+            )
 
             if stop_loss >= entry_price:
 
@@ -103,8 +119,14 @@ class RiskManager:
         else:
 
 
-            stop_loss = latest_swing_high + buffer
+            atr_stop = atr * ATR_MULTIPLIER
 
+            structure_stop = latest_swing_high + buffer
+
+            stop_loss = max(
+                structure_stop,
+                entry_price + atr_stop
+            )
 
             if stop_loss <= entry_price:
 
@@ -204,6 +226,13 @@ class RiskManager:
             lot_size
         )
 
+        print("\n========== RISK MANAGER ==========\n")
+        print(f"ATR          : {atr:.2f}")
+        print(f"Entry        : {entry_price:.2f}")
+        print(f"Stop Loss    : {stop_loss:.2f}")
+        print(f"Take Profit  : {take_profit:.2f}")
+        print(f"SL Distance  : {sl_distance:.2f}")
+        print(f"Lot Size     : {lot_size:.2f}")
 
 
         return {

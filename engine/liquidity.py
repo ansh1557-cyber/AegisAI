@@ -22,8 +22,8 @@ class LiquidityEngine:
             for i in range(index + 1, min(index + 21, len(df))):
 
                 if (
-                    df["High"].iloc[i] > level
-                    and df["Close"].iloc[i] < level
+                    df["high"].iloc[i] > level
+                    and df["close"].iloc[i] < level
                 ):
 
                     self.buy_side_sweeps.append(
@@ -41,8 +41,8 @@ class LiquidityEngine:
             for i in range(index + 1, min(index + 21, len(df))):
 
                 if (
-                    df["Low"].iloc[i] < level
-                    and df["Close"].iloc[i] > level
+                    df["low"].iloc[i] < level
+                    and df["close"].iloc[i] > level
                 ):
 
                     self.sell_side_sweeps.append(

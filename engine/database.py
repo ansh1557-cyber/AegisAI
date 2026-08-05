@@ -219,6 +219,23 @@ class Database:
 
         return result[0]
 
+    # ==========================
+    # CLOSE TRADE
+    # ==========================
+
+    def close_trade(
+        self,
+        ticket,
+        profit,
+        close_time=None
+    ):
+
+        self.update_trade(
+            ticket=ticket,
+            status="CLOSED",
+            profit=profit,
+           close_time=close_time,
+        )
 
 
     # ==========================
