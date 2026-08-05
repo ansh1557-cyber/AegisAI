@@ -11,13 +11,16 @@ from datetime import datetime
 from engine.telegram import TelegramNotifier
 from engine.config import SYMBOL, MAGIC_NUMBER
 from engine.database import Database
+from engine.trade_manager import TradeManager
 
 
 class TradeMonitor:
 
     def __init__(self):
+        
         self.db = Database()
-
+        self.trade_manager = TradeManager()
+        
     def get_open_positions(self):
 
         positions = mt5.positions_get(symbol=SYMBOL)
@@ -30,17 +33,12 @@ class TradeMonitor:
             for position in positions
             if position.magic == MAGIC_NUMBER
         ]
-
+        
         return positions
 
     def get_deal(self, position_id):
 
-        deals = mt5.history_deals_get(position=position_id)
-
-        if deals is None or len(deals) == 0:
-            return None
-
-        return deals[-1]
+        deal = deals[-1]
 
         print("\n========== LAST DEAL ==========\n")
         print(f"Ticket      : {deal.ticket}")
@@ -76,6 +74,8 @@ class TradeMonitor:
                 new_tickets = current_tickets - previous_tickets
 
                 for position in positions:
+                    
+                    self.trade_manager.move_to_break_even(position)
 
                     if position.ticket in new_tickets:
 
@@ -114,7 +114,7 @@ class TradeMonitor:
                         print(f"Profit : {deal.profit}")
                         print(f"Price  : {deal.price}")
                         
-                        self.db.close_trade(
+                        self.db.update_trade(
                             ticket=ticket,
                             status="CLOSED",
                             profit=deal.profit,
