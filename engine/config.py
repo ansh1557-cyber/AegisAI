@@ -38,4 +38,12 @@ MAGIC_NUMBER = 20260726
 ATR_PERIOD = 14
 ATR_MULTIPLIER = 1.5
 
+# ==========================
+# Trade Manager
+# ==========================
+
 BREAK_EVEN_R = 1.0
+TRAIL_AFTER_R = 2.0
+TRAIL_STEP_R = 0.5
+PARTIAL_CLOSE_R = 2.0
+PARTIAL_CLOSE_PERCENT = 0.50
