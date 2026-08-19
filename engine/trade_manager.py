@@ -1,15 +1,20 @@
 """
 Aegis AI
 Module: Trade Manager
-Version: 0.4.1
+Version: 0.5.0
 """
+
+import math
 
 import MetaTrader5 as mt5
 
 from engine.config import (
     BREAK_EVEN_R,
+    TRAIL_AFTER_R,
+    TRAIL_STEP_R,
     PARTIAL_CLOSE_R,
     PARTIAL_CLOSE_PERCENT,
+    RISK_REWARD,
 )
 
 
@@ -19,274 +24,483 @@ class TradeManager:
         self.trade_states = {}
 
     # =====================================================
-    # BREAK EVEN
+    # STATE
     # =====================================================
 
-    def move_to_break_even(self, position):
-        
-        if position.ticket not in self.trade_states:
-            
-            initial_risk = abs(position.price_open - position.sl)
-            
-            self.trade_states[position.ticket] = {
-                "break_even": False,
-                "partial_closed": False,
-                "initial_risk": initial_risk,
-            }
+    def _get_state(self, position):
 
-        state = self.trade_states[position.ticket]
+        ticket = position.ticket
 
-        if state["break_even"]:
-            return
+        if ticket in self.trade_states:
+            return self.trade_states[ticket]
 
-        entry = position.price_open
-        sl = position.sl
-        tp = position.tp
+        entry = float(position.price_open)
+        sl = float(position.sl)
+        tp = float(position.tp)
+
+        initial_risk = abs(entry - sl)
+
+        # If SL is already at entry, recover initial risk
+        # from TP and configured risk/reward.
+        if initial_risk <= 0 and RISK_REWARD > 0:
+            initial_risk = abs(tp - entry) / RISK_REWARD
+
+        state = {
+            "initial_risk": initial_risk,
+            "break_even": abs(sl - entry) < 1e-6,
+            "partial_closed": False,
+            "partial_unavailable": False,
+            "last_trail_level": None,
+        }
+
+        self.trade_states[ticket] = state
+
+        return state
+
+    def remove_state(self, ticket):
+        self.trade_states.pop(ticket, None)
+
+    # =====================================================
+    # MARKET PRICE
+    # =====================================================
+
+    def _get_market(self, position):
 
         tick = mt5.symbol_info_tick(position.symbol)
 
         if tick is None:
-            print("Unable to get market price.")
-            return
+            return None, None
 
-        current = (
-            tick.bid
-            if position.type == mt5.ORDER_TYPE_BUY
-            else tick.ask
+        if position.type == mt5.ORDER_TYPE_BUY:
+            return tick.bid, tick
+
+        return tick.ask, tick
+
+    # =====================================================
+    # MODIFY SL
+    # =====================================================
+
+    def _modify_sl(self, position, new_sl):
+
+        symbol_info = mt5.symbol_info(position.symbol)
+
+        if symbol_info is None:
+            print("❌ Unable to read symbol information.")
+            return False
+
+        new_sl = round(
+            float(new_sl),
+            symbol_info.digits
         )
 
-        risk = state["initial_risk"]
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "position": position.ticket,
+            "symbol": position.symbol,
+            "sl": new_sl,
+            "tp": position.tp,
+        }
 
-        print("\n========== TRADE MANAGER ==========")
+        result = mt5.order_send(request)
+
+        if result is None:
+            print("❌ MT5 returned no response.")
+            return False
+
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            print(
+                f"❌ SL update failed | "
+                f"Retcode={result.retcode} | "
+                f"Comment={result.comment}"
+            )
+            return False
+
+        print(f"✅ SL updated -> {new_sl}")
+
+        return True
+
+    # =====================================================
+    # BREAK EVEN
+    # =====================================================
+
+    def move_to_break_even(self, position):
+
+        state = self._get_state(position)
+
+        if state["break_even"]:
+            return
+
+        risk = float(state["initial_risk"])
+
+        if risk <= 0:
+            print(
+                f"⚠ Ticket {position.ticket}: "
+                "initial risk unavailable."
+            )
+            return
+
+        entry = float(position.price_open)
+
+        current, _ = self._get_market(position)
+
+        if current is None:
+            return
+
+        if position.type == mt5.ORDER_TYPE_BUY:
+
+            trigger = entry + (
+                risk * BREAK_EVEN_R
+            )
+
+            if current < trigger:
+                return
+
+            if position.sl >= entry:
+
+                state["break_even"] = True
+                return
+
+        else:
+
+            trigger = entry - (
+                risk * BREAK_EVEN_R
+            )
+
+            if current > trigger:
+                return
+
+            if position.sl <= entry:
+
+                state["break_even"] = True
+                return
+
+        print("\n========== BREAK EVEN ==========")
         print(f"Ticket : {position.ticket}")
         print(f"Entry  : {entry}")
         print(f"Current: {current}")
-        print(f"SL     : {sl}")
-        print(f"TP     : {tp}")
-        print(f"Risk   : {risk}")
+        print(f"Trigger: {trigger}")
 
-        if risk <= 0:
-            print("Invalid risk.")
+        if self._modify_sl(position, entry):
+
+            state["break_even"] = True
+
+            print("✅ Break-Even activated.")
+
+    # =====================================================
+    # PARTIAL CLOSE
+    # =====================================================
+
+    def partial_close(self, position):
+
+        state = self._get_state(position)
+
+        if state["partial_closed"]:
             return
 
-        # BUY
+        if state["partial_unavailable"]:
+            return
+
+        risk = float(state["initial_risk"])
+
+        if risk <= 0:
+            return
+
+        entry = float(position.price_open)
+
+        current, tick = self._get_market(position)
+
+        if current is None or tick is None:
+            return
+
+        # -----------------------------
+        # Trigger
+        # -----------------------------
+
         if position.type == mt5.ORDER_TYPE_BUY:
 
-            trigger = entry + (risk * BREAK_EVEN_R)
+            trigger = entry + (
+                risk * PARTIAL_CLOSE_R
+            )
 
-            print(f"Break-even Trigger : {trigger}")
+            if current < trigger:
+                return
 
-            if current >= trigger and sl < entry:
-
-                print("Moving BUY SL to Break Even...")
-
-                request = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "position": position.ticket,
-                    "symbol": position.symbol,
-                    "sl": entry,
-                    "tp": tp,
-                }
-
-                result = mt5.order_send(request)
-
-                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    state["break_even"] = True
-                    print("BUY moved to Break Even.")
-                else:
-                    print("Failed to move BUY SL.")
-
-        # SELL
         else:
 
-            trigger = entry - (risk * BREAK_EVEN_R)
+            trigger = entry - (
+                risk * PARTIAL_CLOSE_R
+            )
 
-            print(f"Break-even Trigger : {trigger}")
+            if current > trigger:
+                return
 
-            if current <= trigger and sl > entry:
+        # -----------------------------
+        # Broker volume rules
+        # -----------------------------
 
-                print("Moving SELL SL to Break Even...")
+        symbol_info = mt5.symbol_info(
+            position.symbol
+        )
 
-                request = {
-                    "action": mt5.TRADE_ACTION_SLTP,
-                    "position": position.ticket,
-                    "symbol": position.symbol,
-                    "sl": entry,
-                    "tp": tp,
-                }
+        if symbol_info is None:
+            print("❌ Unable to read symbol volume rules.")
+            return
 
-                result = mt5.order_send(request)
+        min_volume = float(
+            symbol_info.volume_min
+        )
 
-                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    state["break_even"] = True
-                    print("SELL moved to Break Even.")
-                else:
-                    print("Failed to move SELL SL.")
+        volume_step = float(
+            symbol_info.volume_step
+        )
+
+        current_volume = float(
+            position.volume
+        )
+
+        desired_close = (
+            current_volume
+            * PARTIAL_CLOSE_PERCENT
+        )
+
+        if volume_step <= 0:
+            volume_step = min_volume
+
+        # Round DOWN to broker volume step.
+        close_volume = (
+            math.floor(
+                desired_close / volume_step
+            )
+            * volume_step
+        )
+
+        close_volume = round(
+            close_volume,
+            8
+        )
+
+        remaining_volume = round(
+            current_volume - close_volume,
+            8
+        )
+
+        print("\n========== PARTIAL CLOSE ==========")
+        print(f"Ticket         : {position.ticket}")
+        print(f"Current        : {current}")
+        print(f"Trigger        : {trigger}")
+        print(f"Current Volume : {current_volume}")
+        print(f"Target Close   : {close_volume}")
+        print(f"Min Volume     : {min_volume}")
+        print(f"Volume Step    : {volume_step}")
+
+        # Example:
+        # 0.01 * 50% = 0.005
+        # If broker step is 0.01, this becomes 0.
+        if close_volume < min_volume:
+
+            print(
+                "⚠ Partial close unavailable: "
+                "position is too small for broker volume rules."
+            )
+
+            state["partial_unavailable"] = True
+            return
+
+        # Never accidentally close the entire position.
+        if close_volume >= current_volume:
+
+            print(
+                "⚠ Partial close cancelled: "
+                "calculated close volume would close "
+                "the entire position."
+            )
+
+            state["partial_unavailable"] = True
+            return
+
+        if (
+            remaining_volume > 0
+            and remaining_volume < min_volume
+        ):
+
+            print(
+                "⚠ Partial close cancelled: "
+                "remaining position would be below "
+                "broker minimum."
+            )
+
+            state["partial_unavailable"] = True
+            return
+
+        # -----------------------------
+        # Closing direction
+        # -----------------------------
+
+        if position.type == mt5.ORDER_TYPE_BUY:
+
+            close_type = mt5.ORDER_TYPE_SELL
+            close_price = tick.bid
+
+        else:
+
+            close_type = mt5.ORDER_TYPE_BUY
+            close_price = tick.ask
+
+        request = {
+            "action": mt5.TRADE_ACTION_DEAL,
+            "position": position.ticket,
+            "symbol": position.symbol,
+            "volume": close_volume,
+            "type": close_type,
+            "price": close_price,
+            "deviation": 20,
+            "magic": position.magic,
+            "comment": "Aegis Partial Close",
+        }
+
+        result = mt5.order_send(request)
+
+        if result is None:
+
+            print(
+                "❌ Partial close failed: "
+                "no MT5 response."
+            )
+
+            return
+
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+
+            print(
+                f"❌ Partial close failed | "
+                f"Retcode={result.retcode} | "
+                f"Comment={result.comment}"
+            )
+
+            return
+
+        state["partial_closed"] = True
+
+        print("✅ PARTIAL CLOSE EXECUTED")
+        print(f"Closed   : {close_volume}")
+        print(f"Remaining: {remaining_volume}")
 
     # =====================================================
     # TRAILING STOP
     # =====================================================
 
-   
-
     def trail_stop(self, position):
 
-        state = self.trade_states.get(position.ticket)
-
-        if state is None:
-            return
+        state = self._get_state(position)
 
         if not state["break_even"]:
             return
 
-        entry = position.price_open
-        sl = position.sl
-        tp = position.tp
-
-        tick = mt5.symbol_info_tick(position.symbol)
-
-        if tick is None:
-            return
-
-        current = (
-            tick.bid
-            if position.type == mt5.ORDER_TYPE_BUY
-            else tick.ask
-        )
-
-        risk = state["initial_risk"]
-
-        # BUY
-        if position.type == mt5.ORDER_TYPE_BUY:
-
-            trigger = entry + (risk * 2)
-
-            if current >= trigger:
-
-                new_sl = current - risk
-
-                if new_sl > sl:
-
-                    print(f"Trailing BUY -> {new_sl}")
-
-                    request = {
-                        "action": mt5.TRADE_ACTION_SLTP,
-                        "position": position.ticket,
-                        "symbol": position.symbol,
-                        "sl": round(new_sl, 2),
-                        "tp": tp,
-                    }
-
-                    result = mt5.order_send(request)
-
-                    if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                        print("BUY Trailing Updated")
-
-        # SELL
-        else:
-
-            trigger = entry - (risk * 2)
-
-            if current <= trigger:
-
-                new_sl = current + risk
-
-                if new_sl < sl:
-
-                    print(f"Trailing SELL -> {new_sl}")
-
-                    request = {
-                        "action": mt5.TRADE_ACTION_SLTP,
-                        "position": position.ticket,
-                        "symbol": position.symbol,
-                        "sl": round(new_sl, 2),
-                        "tp": tp,
-                    }
-
-                    result = mt5.order_send(request)
-
-                    if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                        print("SELL Trailing Updated")
-                    
-    def partial_close(self, position):
-
-        state = self.trade_states.get(position.ticket)
-
-        if state is None:
-            return
-
-        if state["partial_closed"]:
-            return
-
-        entry = position.price_open
-        sl = position.sl
-        tp = position.tp
-
-        tick = mt5.symbol_info_tick(position.symbol)
-
-        if tick is None:
-            return
-
-        current = (
-            tick.bid
-            if position.type == mt5.ORDER_TYPE_BUY
-            else tick.ask
-        )
-
-        risk = state["initial_risk"]
+        risk = float(state["initial_risk"])
 
         if risk <= 0:
             return
 
+        entry = float(position.price_open)
+
+        current, _ = self._get_market(position)
+
+        if current is None:
+            return
+
+        # Current profit measured using ORIGINAL risk.
         if position.type == mt5.ORDER_TYPE_BUY:
-            trigger = entry + (risk * PARTIAL_CLOSE_R)
-            
-            if current >= trigger:
+            profit_distance = current - entry
+        else:
+            profit_distance = entry - current
 
-                close_volume = round(position.volume * PARTIAL_CLOSE_PERCENT, 2)
+        current_r = (
+            profit_distance / risk
+        )
 
-                request = {
-                    "action": mt5.TRADE_ACTION_DEAL,
-                    "position": position.ticket,
-                    "symbol": position.symbol,
-                    "volume": close_volume,
-                    "type": mt5.ORDER_TYPE_SELL,
-                    "price": tick.bid,
-                    "deviation": 20,
-                    "magic": position.magic,
-                    "comment": "Partial Close",
-                }
+        if current_r < TRAIL_AFTER_R:
+            return
 
-                result = mt5.order_send(request)
+        # Determine discrete trailing level.
+        #
+        # Example:
+        # Trail starts at 2R
+        # Step = 0.5R
+        #
+        # 2.0R -> lock 1.5R
+        # 2.5R -> lock 2.0R
+        # 3.0R -> lock 2.5R
+        #
 
-                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    state["partial_closed"] = True
-                print(f"✅ Partial Close Executed ({close_volume} lots)")
+        steps = math.floor(
+            (
+                current_r
+                - TRAIL_AFTER_R
+            )
+            / TRAIL_STEP_R
+        )
+
+        if steps < 0:
+            return
+
+        locked_r = (
+            TRAIL_AFTER_R
+            - TRAIL_STEP_R
+            + (
+                steps
+                * TRAIL_STEP_R
+            )
+        )
+
+        # Never submit the same trail level twice.
+        last_level = state["last_trail_level"]
+
+        if (
+            last_level is not None
+            and locked_r <= last_level
+        ):
+            return
+
+        if position.type == mt5.ORDER_TYPE_BUY:
+
+            new_sl = (
+                entry
+                + (
+                    risk
+                    * locked_r
+                )
+            )
+
+            # Never lower BUY SL.
+            if new_sl <= position.sl:
+                return
 
         else:
 
-            trigger = entry - (risk * PARTIAL_CLOSE_R)
+            new_sl = (
+                entry
+                - (
+                    risk
+                    * locked_r
+                )
+            )
 
-            if current <= trigger:
+            # Never raise SELL SL.
+            if new_sl >= position.sl:
+                return
 
-                close_volume = round(position.volume * PARTIAL_CLOSE_PERCENT, 2)
+        print("\n========== TRAILING STOP ==========")
+        print(f"Ticket     : {position.ticket}")
+        print(f"Current R  : {current_r:.2f}")
+        print(f"Locking R  : {locked_r:.2f}")
+        print(f"Current SL : {position.sl}")
+        print(f"New SL     : {new_sl}")
 
-                request = {
-                    "action": mt5.TRADE_ACTION_DEAL,
-                    "position": position.ticket,
-                    "symbol": position.symbol,
-                    "volume": close_volume,
-                    "type": mt5.ORDER_TYPE_BUY,
-                    "price": tick.ask,
-                    "deviation": 20,
-                    "magic": position.magic,
-                    "comment": "Partial Close",
-                }
+        if self._modify_sl(position, new_sl):
 
-                result = mt5.order_send(request)
+            state["last_trail_level"] = locked_r
 
-                if result and result.retcode == mt5.TRADE_RETCODE_DONE:
-                    state["partial_closed"] = True
-                    print(f"✅ Partial Close Executed ({close_volume} lots)")
-
-            
+            print(
+                f"✅ Trailing level "
+                f"{locked_r:.2f}R activated."
+            )
