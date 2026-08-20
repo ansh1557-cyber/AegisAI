@@ -1,7 +1,7 @@
 """
 Aegis AI
 Module: Trade Monitor
-Version: 0.4.2
+Version: 0.4.5
 """
 
 import time
@@ -18,9 +18,15 @@ from engine.trade_manager import TradeManager
 class TradeMonitor:
 
     def __init__(self):
+
         self.db = Database()
         self.trade_manager = TradeManager()
+
+        # Tickets known by the monitor.
         self.known_trades = set()
+
+        # First successful MT5 snapshot.
+        self.startup_synchronized = False
 
     # =====================================================
     # OPEN POSITIONS
@@ -40,6 +46,38 @@ class TradeMonitor:
         ]
 
     # =====================================================
+    # DATABASE TRADE CHECK
+    # =====================================================
+
+    def is_existing_database_trade(self, ticket):
+        """
+        Check whether this ticket already exists in the database
+        as an OPEN trade.
+
+        Database schema:
+        trade[1] = ticket
+        trade[9] = status
+        """
+
+        try:
+
+            trades = self.db.get_trades()
+
+            for trade in trades:
+
+                if trade[1] == ticket:
+
+                    return trade[9] == "OPEN"
+
+        except Exception as exc:
+
+            print(
+                f"Database trade lookup failed: {exc}"
+            )
+
+        return False
+
+    # =====================================================
     # DEAL LOOKUP
     # =====================================================
 
@@ -54,7 +92,11 @@ class TradeMonitor:
         )
 
         if deals is None:
-            print("Unable to retrieve MT5 deal history.")
+
+            print(
+                "Unable to retrieve MT5 deal history."
+            )
+
             return None
 
         position_deals = [
@@ -64,9 +106,11 @@ class TradeMonitor:
         ]
 
         if not position_deals:
+
             print(
                 f"No deal found for position {position_id}"
             )
+
             return None
 
         position_deals.sort(
@@ -76,14 +120,154 @@ class TradeMonitor:
         deal = position_deals[-1]
 
         print("\n========== LAST DEAL ==========")
-        print(f"Ticket      : {deal.ticket}")
-        print(f"Position ID : {deal.position_id}")
-        print(f"Profit      : {deal.profit}")
-        print(f"Price       : {deal.price}")
-        print(f"Reason      : {deal.reason}")
+        print(
+            f"Ticket      : {deal.ticket}"
+        )
+        print(
+            f"Position ID : {deal.position_id}"
+        )
+        print(
+            f"Profit      : {deal.profit}"
+        )
+        print(
+            f"Price       : {deal.price}"
+        )
+        print(
+            f"Reason      : {deal.reason}"
+        )
         print()
 
         return deal
+
+    # =====================================================
+    # PRINT POSITION
+    # =====================================================
+
+    def print_position(self, position, title):
+
+        print(
+            f"\n========== {title} =========="
+        )
+
+        print(
+            f"Ticket : {position.ticket}"
+        )
+
+        print(
+            f"Symbol : {position.symbol}"
+        )
+
+        print(
+            "Type   : "
+            f"{'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}"
+        )
+
+        print(
+            f"Volume : {position.volume}"
+        )
+
+        print(
+            f"Open   : {position.price_open}"
+        )
+
+        print(
+            f"SL     : {position.sl}"
+        )
+
+        print(
+            f"TP     : {position.tp}"
+        )
+
+    # =====================================================
+    # EXISTING TRADE RECOVERY
+    # =====================================================
+
+    def recover_existing_position(self, position):
+
+        # Build/recover TradeManager state.
+        self.trade_manager._get_state(
+            position
+        )
+
+        self.known_trades.add(
+            position.ticket
+        )
+
+        self.print_position(
+            position,
+            "EXISTING TRADE RECOVERED"
+        )
+
+    # =====================================================
+    # NEW TRADE
+    # =====================================================
+
+    def handle_new_trade(self, position):
+
+        self.known_trades.add(
+            position.ticket
+        )
+
+        self.print_position(
+            position,
+            "NEW TRADE"
+        )
+
+        TelegramNotifier().send_trade_opened(
+            position
+        )
+
+    # =====================================================
+    # CLOSED TRADE
+    # =====================================================
+
+    def handle_closed_trade(self, ticket):
+
+        deal = self.get_deal(ticket)
+
+        print(
+            "\n========== TRADE CLOSED =========="
+        )
+
+        print(
+            f"Ticket : {ticket}"
+        )
+
+        if deal:
+
+            print(
+                f"Profit : {deal.profit}"
+            )
+
+            print(
+                f"Price  : {deal.price}"
+            )
+
+            self.db.update_trade(
+                ticket=ticket,
+                status="CLOSED",
+                profit=deal.profit,
+                close_time=str(
+                    datetime.now()
+                ),
+            )
+
+            print(
+                "Database updated successfully."
+            )
+
+        TelegramNotifier().send_trade_closed(
+            ticket,
+            deal
+        )
+
+        self.known_trades.discard(
+            ticket
+        )
+
+        self.trade_manager.remove_state(
+            ticket
+        )
 
     # =====================================================
     # MONITOR
@@ -96,14 +280,12 @@ class TradeMonitor:
             "Press Ctrl+C to stop.\n"
         )
 
-        initial_positions = self.get_open_positions()
-
-        previous_tickets = {
-            position.ticket
-            for position in initial_positions
-        }
-
-        self.known_trades.update(previous_tickets)
+        # Important:
+        # The scheduler starts TradeMonitor and TradingEngine
+        # concurrently. Therefore the first snapshot can be
+        # empty even when TradingEngine is about to expose a
+        # position.
+        previous_tickets = set()
 
         try:
 
@@ -116,121 +298,115 @@ class TradeMonitor:
                     for position in positions
                 }
 
-                # -----------------------------
-                # New Trades
-                # -----------------------------
+                # =================================================
+                # STARTUP SYNCHRONIZATION
+                # =================================================
 
-                new_tickets = (
-                    current_tickets - previous_tickets
-                )
+                if not self.startup_synchronized:
 
-                for position in positions:
+                    for position in positions:
 
-                    # Trade management pipeline
-                    self.trade_manager.move_to_break_even(
-                        position
+                        self.recover_existing_position(
+                            position
+                        )
+
+                    previous_tickets = (
+                        current_tickets.copy()
                     )
 
-                    self.trade_manager.partial_close(
-                        position
+                    self.startup_synchronized = True
+
+                else:
+
+                    # =================================================
+                    # TRADE MANAGEMENT
+                    # =================================================
+
+                    for position in positions:
+
+                        self.trade_manager.move_to_break_even(
+                            position
+                        )
+
+                        self.trade_manager.partial_close(
+                            position
+                        )
+
+                        self.trade_manager.trail_stop(
+                            position
+                        )
+
+                    # =================================================
+                    # NEW TICKETS
+                    # =================================================
+
+                    new_tickets = (
+                        current_tickets
+                        - previous_tickets
                     )
 
-                    self.trade_manager.trail_stop(
-                        position
-                    )
+                    for ticket in new_tickets:
 
-                    # Announce genuinely new trades once
-                    if position.ticket in new_tickets:
+                        position = next(
+                            (
+                                p
+                                for p in positions
+                                if p.ticket == ticket
+                            ),
+                            None
+                        )
 
-                        if position.ticket not in self.known_trades:
+                        if position is None:
+                            continue
 
-                            self.known_trades.add(
-                                position.ticket
-                            )
+                        # -------------------------------------------------
+                        # If the trading engine saved this trade to the DB
+                        # already, it is an existing trade from the monitor's
+                        # point of view, not a new notification.
+                        # -------------------------------------------------
 
-                            print(
-                                "\n========== NEW TRADE =========="
-                            )
-                            print(
-                                f"Ticket : {position.ticket}"
-                            )
-                            print(
-                                f"Symbol : {position.symbol}"
-                            )
-                            print(
-                                "Type   : "
-                                f"{'BUY' if position.type == mt5.ORDER_TYPE_BUY else 'SELL'}"
-                            )
-                            print(
-                                f"Volume : {position.volume}"
-                            )
-                            print(
-                                f"Open   : {position.price_open}"
-                            )
-                            print(
-                                f"SL     : {position.sl}"
-                            )
-                            print(
-                                f"TP     : {position.tp}"
-                            )
+                        if self.is_existing_database_trade(
+                            ticket
+                        ):
 
-                            TelegramNotifier().send_trade_opened(
+                            self.recover_existing_position(
                                 position
                             )
 
-                # -----------------------------
-                # Closed Trades
-                # -----------------------------
+                        else:
 
-                closed_tickets = (
-                    previous_tickets - current_tickets
+                            # Make sure TradeManager state exists.
+                            self.trade_manager._get_state(
+                                position
+                            )
+
+                            self.handle_new_trade(
+                                position
+                            )
+
+                    # =================================================
+                    # CLOSED TICKETS
+                    # =================================================
+
+                    closed_tickets = (
+                        previous_tickets
+                        - current_tickets
+                    )
+
+                    for ticket in closed_tickets:
+
+                        self.handle_closed_trade(
+                            ticket
+                        )
+
+                previous_tickets = (
+                    current_tickets.copy()
                 )
-
-                for ticket in closed_tickets:
-
-                    deal = self.get_deal(ticket)
-
-                    print(
-                        "\n========== TRADE CLOSED =========="
-                    )
-                    print(
-                        f"Ticket : {ticket}"
-                    )
-
-                    if deal:
-
-                        print(
-                            f"Profit : {deal.profit}"
-                        )
-                        print(
-                            f"Price  : {deal.price}"
-                        )
-
-                        self.db.update_trade(
-                            ticket=ticket,
-                            status="CLOSED",
-                            profit=deal.profit,
-                            close_time=str(
-                                datetime.now()
-                            ),
-                        )
-
-                        print(
-                            "Database updated successfully."
-                        )
-
-                    TelegramNotifier().send_trade_closed(
-                        ticket,
-                        deal
-                    )
-
-                    self.known_trades.discard(ticket)
-                    self.trade_manager.remove_state(ticket)
-
-                previous_tickets = current_tickets
 
                 time.sleep(5)
 
         except KeyboardInterrupt:
 
-            print("\nTrade monitor stopped.")
+            print(
+                "\nTrade monitor stopped."
+            )

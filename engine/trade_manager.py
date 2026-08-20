@@ -1,10 +1,11 @@
 """
 Aegis AI
 Module: Trade Manager
-Version: 0.5.0
+Version: 0.5.1
 """
 
 import math
+from datetime import datetime, timedelta
 
 import MetaTrader5 as mt5
 
@@ -27,7 +28,50 @@ class TradeManager:
     # STATE
     # =====================================================
 
+    def _has_partial_close(self, position):
+        """Return True when MT5 history shows a partial exit."""
+
+        date_to = datetime.now()
+        date_from = date_to - timedelta(days=30)
+
+        deals = mt5.history_deals_get(date_from, date_to)
+
+        if deals is None:
+            return False
+
+        position_deals = [
+            deal
+            for deal in deals
+            if deal.position_id == position.ticket
+        ]
+
+        if not position_deals:
+            return False
+
+        entry_volume = sum(
+            float(deal.volume)
+            for deal in position_deals
+            if deal.entry == mt5.DEAL_ENTRY_IN
+        )
+
+        exit_volume = sum(
+            float(deal.volume)
+            for deal in position_deals
+            if deal.entry == mt5.DEAL_ENTRY_OUT
+        )
+
+        if (
+            entry_volume > 0
+            and exit_volume > 0
+            and exit_volume < entry_volume
+            and float(position.volume) < entry_volume
+        ):
+            return True
+
+        return False
+
     def _get_state(self, position):
+        """Create or recover management state for a position."""
 
         ticket = position.ticket
 
@@ -37,23 +81,36 @@ class TradeManager:
         entry = float(position.price_open)
         sl = float(position.sl)
         tp = float(position.tp)
+        current_volume = float(position.volume)
 
+        # Recover original risk from the current SL.
         initial_risk = abs(entry - sl)
 
-        # If SL is already at entry, recover initial risk
-        # from TP and configured risk/reward.
+        # If SL is already at break-even, recover the original
+        # risk from TP and the configured risk/reward.
         if initial_risk <= 0 and RISK_REWARD > 0:
             initial_risk = abs(tp - entry) / RISK_REWARD
 
+        break_even = abs(sl - entry) < 1e-6
+        partial_closed = self._has_partial_close(position)
+
         state = {
             "initial_risk": initial_risk,
-            "break_even": abs(sl - entry) < 1e-6,
-            "partial_closed": False,
+            "break_even": break_even,
+            "partial_closed": partial_closed,
             "partial_unavailable": False,
             "last_trail_level": None,
+            "initial_volume": current_volume,
         }
 
         self.trade_states[ticket] = state
+
+        print("\n========== TRADE STATE RECOVERED ==========")
+        print(f"Ticket          : {ticket}")
+        print(f"Initial Risk    : {initial_risk}")
+        print(f"Break-Even      : {break_even}")
+        print(f"Partial Closed  : {partial_closed}")
+        print(f"Current Volume  : {current_volume}")
 
         return state
 
@@ -156,7 +213,6 @@ class TradeManager:
                 return
 
             if position.sl >= entry:
-
                 state["break_even"] = True
                 return
 
@@ -170,7 +226,6 @@ class TradeManager:
                 return
 
             if position.sl <= entry:
-
                 state["break_even"] = True
                 return
 
@@ -181,9 +236,7 @@ class TradeManager:
         print(f"Trigger: {trigger}")
 
         if self._modify_sl(position, entry):
-
             state["break_even"] = True
-
             print("✅ Break-Even activated.")
 
     # =====================================================
@@ -212,10 +265,6 @@ class TradeManager:
         if current is None or tick is None:
             return
 
-        # -----------------------------
-        # Trigger
-        # -----------------------------
-
         if position.type == mt5.ORDER_TYPE_BUY:
 
             trigger = entry + (
@@ -234,50 +283,30 @@ class TradeManager:
             if current > trigger:
                 return
 
-        # -----------------------------
-        # Broker volume rules
-        # -----------------------------
-
-        symbol_info = mt5.symbol_info(
-            position.symbol
-        )
+        symbol_info = mt5.symbol_info(position.symbol)
 
         if symbol_info is None:
             print("❌ Unable to read symbol volume rules.")
             return
 
-        min_volume = float(
-            symbol_info.volume_min
-        )
-
-        volume_step = float(
-            symbol_info.volume_step
-        )
-
-        current_volume = float(
-            position.volume
-        )
+        min_volume = float(symbol_info.volume_min)
+        volume_step = float(symbol_info.volume_step)
+        current_volume = float(position.volume)
 
         desired_close = (
-            current_volume
-            * PARTIAL_CLOSE_PERCENT
+            current_volume * PARTIAL_CLOSE_PERCENT
         )
 
         if volume_step <= 0:
             volume_step = min_volume
 
-        # Round DOWN to broker volume step.
         close_volume = (
             math.floor(
                 desired_close / volume_step
-            )
-            * volume_step
+            ) * volume_step
         )
 
-        close_volume = round(
-            close_volume,
-            8
-        )
+        close_volume = round(close_volume, 8)
 
         remaining_volume = round(
             current_volume - close_volume,
@@ -293,28 +322,20 @@ class TradeManager:
         print(f"Min Volume     : {min_volume}")
         print(f"Volume Step    : {volume_step}")
 
-        # Example:
-        # 0.01 * 50% = 0.005
-        # If broker step is 0.01, this becomes 0.
         if close_volume < min_volume:
-
             print(
                 "⚠ Partial close unavailable: "
                 "position is too small for broker volume rules."
             )
-
             state["partial_unavailable"] = True
             return
 
-        # Never accidentally close the entire position.
         if close_volume >= current_volume:
-
             print(
                 "⚠ Partial close cancelled: "
                 "calculated close volume would close "
                 "the entire position."
             )
-
             state["partial_unavailable"] = True
             return
 
@@ -322,27 +343,18 @@ class TradeManager:
             remaining_volume > 0
             and remaining_volume < min_volume
         ):
-
             print(
                 "⚠ Partial close cancelled: "
                 "remaining position would be below "
                 "broker minimum."
             )
-
             state["partial_unavailable"] = True
             return
 
-        # -----------------------------
-        # Closing direction
-        # -----------------------------
-
         if position.type == mt5.ORDER_TYPE_BUY:
-
             close_type = mt5.ORDER_TYPE_SELL
             close_price = tick.bid
-
         else:
-
             close_type = mt5.ORDER_TYPE_BUY
             close_price = tick.ask
 
@@ -361,22 +373,18 @@ class TradeManager:
         result = mt5.order_send(request)
 
         if result is None:
-
             print(
                 "❌ Partial close failed: "
                 "no MT5 response."
             )
-
             return
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-
             print(
                 f"❌ Partial close failed | "
                 f"Retcode={result.retcode} | "
                 f"Comment={result.comment}"
             )
-
             return
 
         state["partial_closed"] = True
@@ -408,36 +416,23 @@ class TradeManager:
         if current is None:
             return
 
-        # Current profit measured using ORIGINAL risk.
         if position.type == mt5.ORDER_TYPE_BUY:
             profit_distance = current - entry
         else:
             profit_distance = entry - current
 
-        current_r = (
-            profit_distance / risk
-        )
+        current_r = profit_distance / risk
 
         if current_r < TRAIL_AFTER_R:
             return
 
-        # Determine discrete trailing level.
-        #
-        # Example:
-        # Trail starts at 2R
-        # Step = 0.5R
-        #
-        # 2.0R -> lock 1.5R
-        # 2.5R -> lock 2.0R
-        # 3.0R -> lock 2.5R
-        #
+        if TRAIL_STEP_R <= 0:
+            return
 
         steps = math.floor(
             (
-                current_r
-                - TRAIL_AFTER_R
-            )
-            / TRAIL_STEP_R
+                current_r - TRAIL_AFTER_R
+            ) / TRAIL_STEP_R
         )
 
         if steps < 0:
@@ -447,12 +442,10 @@ class TradeManager:
             TRAIL_AFTER_R
             - TRAIL_STEP_R
             + (
-                steps
-                * TRAIL_STEP_R
+                steps * TRAIL_STEP_R
             )
         )
 
-        # Never submit the same trail level twice.
         last_level = state["last_trail_level"]
 
         if (
@@ -466,12 +459,10 @@ class TradeManager:
             new_sl = (
                 entry
                 + (
-                    risk
-                    * locked_r
+                    risk * locked_r
                 )
             )
 
-            # Never lower BUY SL.
             if new_sl <= position.sl:
                 return
 
@@ -480,12 +471,10 @@ class TradeManager:
             new_sl = (
                 entry
                 - (
-                    risk
-                    * locked_r
+                    risk * locked_r
                 )
             )
 
-            # Never raise SELL SL.
             if new_sl >= position.sl:
                 return
 
@@ -497,9 +486,7 @@ class TradeManager:
         print(f"New SL     : {new_sl}")
 
         if self._modify_sl(position, new_sl):
-
             state["last_trail_level"] = locked_r
-
             print(
                 f"✅ Trailing level "
                 f"{locked_r:.2f}R activated."
