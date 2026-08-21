@@ -88,17 +88,19 @@ def _ensure_mt5():
     except Exception:
         return False
 
-
 def _mt5_history(days=3650):
     """
-    Build position-level historical records from MT5 deals.
+    Build position-level historical records from MT5.
 
-    MT5 is the primary source here, so the dashboard can show historical
-    trades even when the local SQLite DB is empty or incomplete.
+    Aegis entry deals use MAGIC_NUMBER, but broker exit deals
+    may use magic number 0. Therefore:
 
-    A position can have multiple exit deals (partial close + final close).
-    Those exit deals are aggregated by position_id.
+    1. Find Aegis position IDs from entry deals.
+    2. Include ALL deals belonging to those position IDs.
+    3. Determine whether the position is fully closed from
+       total entry/exit volume.
     """
+
     if not _ensure_mt5():
         return []
 
@@ -106,30 +108,84 @@ def _mt5_history(days=3650):
     date_from = date_to - timedelta(days=days)
 
     try:
-        deals = mt5.history_deals_get(date_from, date_to)
+        deals = mt5.history_deals_get(
+            date_from,
+            date_to
+        )
     except Exception:
         return []
 
     if deals is None:
         return []
 
-    grouped = OrderedDict()
+    # ---------------------------------------------
+    # STEP 1: Find Aegis position IDs
+    # ---------------------------------------------
+
+    aegis_position_ids = set()
 
     for deal in deals:
+
         try:
-            magic = int(getattr(deal, "magic", 0))
-            position_id = int(getattr(deal, "position_id", 0))
+            magic = int(
+                getattr(deal, "magic", 0)
+            )
+
+            position_id = int(
+                getattr(deal, "position_id", 0)
+            )
+
+            entry = int(
+                getattr(deal, "entry", -1)
+            )
+
         except Exception:
             continue
 
-        if magic != int(MAGIC_NUMBER) or position_id <= 0:
+        if (
+            magic == int(MAGIC_NUMBER)
+            and position_id > 0
+            and entry in (
+                mt5.DEAL_ENTRY_IN,
+                mt5.DEAL_ENTRY_INOUT,
+            )
+        ):
+            aegis_position_ids.add(
+                position_id
+            )
+
+    if not aegis_position_ids:
+        return []
+
+    # ---------------------------------------------
+    # STEP 2: Aggregate ALL deals for those IDs
+    # ---------------------------------------------
+
+    grouped = OrderedDict()
+
+    for deal in deals:
+
+        try:
+            position_id = int(
+                getattr(deal, "position_id", 0)
+            )
+        except Exception:
+            continue
+
+        if position_id not in aegis_position_ids:
             continue
 
         bucket = grouped.setdefault(
             position_id,
             {
                 "position_id": position_id,
-                "symbol": str(getattr(deal, "symbol", SYMBOL)),
+                "symbol": str(
+                    getattr(
+                        deal,
+                        "symbol",
+                        SYMBOL
+                    )
+                ),
                 "type": None,
                 "volume_in": 0.0,
                 "volume_out": 0.0,
@@ -140,64 +196,143 @@ def _mt5_history(days=3650):
                 "profit": 0.0,
                 "swap": 0.0,
                 "commission": 0.0,
-                "closed": False,
-            },
+            }
         )
 
-        deal_time = int(getattr(deal, "time", 0) or 0)
-        if bucket["first_time"] is None or deal_time < bucket["first_time"]:
+        deal_time = int(
+            getattr(
+                deal,
+                "time",
+                0
+            ) or 0
+        )
+
+        if (
+            bucket["first_time"] is None
+            or deal_time < bucket["first_time"]
+        ):
             bucket["first_time"] = deal_time
-        if bucket["last_time"] is None or deal_time > bucket["last_time"]:
+
+        if (
+            bucket["last_time"] is None
+            or deal_time > bucket["last_time"]
+        ):
             bucket["last_time"] = deal_time
 
-        entry = int(getattr(deal, "entry", -1))
+        entry = int(
+            getattr(
+                deal,
+                "entry",
+                -1
+            )
+        )
 
-        # IN / INOUT deals establish the position.
+        # -----------------------------------------
+        # ENTRY
+        # -----------------------------------------
+
         if entry in (
-            getattr(mt5, "DEAL_ENTRY_IN", 0),
-            getattr(mt5, "DEAL_ENTRY_INOUT", 2),
+            mt5.DEAL_ENTRY_IN,
+            mt5.DEAL_ENTRY_INOUT,
         ):
-            volume = _safe_float(getattr(deal, "volume", 0))
-            price = _safe_float(getattr(deal, "price", 0))
-            bucket["volume_in"] += volume
-            bucket["entry_price_sum"] += price * volume
-            bucket["entry_volume_weight"] += volume
 
-            deal_type = int(getattr(deal, "type", -1))
-            if deal_type == getattr(mt5, "DEAL_TYPE_BUY", 0):
+            volume = float(
+                getattr(
+                    deal,
+                    "volume",
+                    0
+                ) or 0
+            )
+
+            price = float(
+                getattr(
+                    deal,
+                    "price",
+                    0
+                ) or 0
+            )
+
+            bucket["volume_in"] += volume
+
+            bucket["entry_price_sum"] += (
+                price * volume
+            )
+
+            bucket["entry_volume_weight"] += (
+                volume
+            )
+
+            deal_type = int(
+                getattr(
+                    deal,
+                    "type",
+                    -1
+                )
+            )
+
+            if deal_type == mt5.DEAL_TYPE_BUY:
                 bucket["type"] = "BUY"
-            elif deal_type == getattr(mt5, "DEAL_TYPE_SELL", 1):
+
+            elif deal_type == mt5.DEAL_TYPE_SELL:
                 bucket["type"] = "SELL"
 
-        # OUT / OUT_BY deals close some/all of the position.
+        # -----------------------------------------
+        # EXIT
+        # -----------------------------------------
+
         if entry in (
-            getattr(mt5, "DEAL_ENTRY_OUT", 1),
-            getattr(mt5, "DEAL_ENTRY_OUT_BY", 3),
+            mt5.DEAL_ENTRY_OUT,
+            mt5.DEAL_ENTRY_OUT_BY,
         ):
-            bucket["volume_out"] += _safe_float(
-                getattr(deal, "volume", 0)
+
+            bucket["volume_out"] += float(
+                getattr(
+                    deal,
+                    "volume",
+                    0
+                ) or 0
             )
-            bucket["profit"] += _safe_float(
-                getattr(deal, "profit", 0)
+
+            bucket["profit"] += float(
+                getattr(
+                    deal,
+                    "profit",
+                    0
+                ) or 0
             )
-            bucket["swap"] += _safe_float(
-                getattr(deal, "swap", 0)
+
+            bucket["swap"] += float(
+                getattr(
+                    deal,
+                    "swap",
+                    0
+                ) or 0
             )
-            bucket["commission"] += _safe_float(
-                getattr(deal, "commission", 0)
+
+            bucket["commission"] += float(
+                getattr(
+                    deal,
+                    "commission",
+                    0
+                ) or 0
             )
+
+    # ---------------------------------------------
+    # STEP 3: Convert to dashboard records
+    # ---------------------------------------------
 
     result = []
 
     for position_id, bucket in grouped.items():
+
         volume_in = bucket["volume_in"]
         volume_out = bucket["volume_out"]
 
-        # A complete historical trade has all opened volume closed.
-        # Small floating-point tolerance prevents false "open" states.
         closed = (
             volume_in > 0
-            and volume_out >= volume_in - 1e-9
+            and volume_out >= (
+                volume_in - 1e-9
+            )
         )
 
         total_profit = (
@@ -214,13 +349,25 @@ def _mt5_history(days=3650):
         )
 
         open_time = (
-            datetime.fromtimestamp(bucket["first_time"]).isoformat(sep=" ")
+            datetime.fromtimestamp(
+                bucket["first_time"]
+            ).isoformat(
+                sep=" "
+            )
             if bucket["first_time"]
             else None
         )
+
         close_time = (
-            datetime.fromtimestamp(bucket["last_time"]).isoformat(sep=" ")
-            if bucket["last_time"] and closed
+            datetime.fromtimestamp(
+                bucket["last_time"]
+            ).isoformat(
+                sep=" "
+            )
+            if (
+                bucket["last_time"]
+                and closed
+            )
             else None
         )
 
@@ -229,30 +376,46 @@ def _mt5_history(days=3650):
                 "id": position_id,
                 "ticket": position_id,
                 "symbol": bucket["symbol"],
-                "signal": bucket["type"] or "UNKNOWN",
-                "volume": round(volume_in, 8),
-                "entry": round(entry_price, 5),
+                "signal": (
+                    bucket["type"]
+                    or "UNKNOWN"
+                ),
+                "volume": round(
+                    volume_in,
+                    8
+                ),
+                "entry": round(
+                    entry_price,
+                    5
+                ),
                 "stop_loss": None,
                 "take_profit": None,
                 "confidence": None,
-                "status": "CLOSED" if closed else "OPEN",
-                "profit": round(total_profit, 2),
+                "status": (
+                    "CLOSED"
+                    if closed
+                    else "OPEN"
+                ),
+                "profit": round(
+                    total_profit,
+                    2
+                ),
                 "open_time": open_time,
                 "close_time": close_time,
                 "source": "MT5",
                 "partial_close": (
-                    closed
-                    and volume_out > 0
+                    volume_out > 0
                     and volume_out < volume_in
                 ),
             }
         )
 
     result.sort(
-        key=lambda x: x.get("open_time") or ""
+        key=lambda x:
+        x.get("open_time") or ""
     )
-    return result
 
+    return result
 
 def _history_source():
     """
@@ -639,6 +802,18 @@ def build_payload():
         trades, source = _history_source()
         history = _performance_history(trades)
 
+        mt5_data = _mt5_snapshot()
+
+        metrics = _metrics(
+            trades,
+            history,
+            source
+        )
+
+        metrics["open_trades"] = len(
+            mt5_data.get("positions", [])
+        ) 
+
         return {
             "ok": True,
             "timestamp": datetime.now().isoformat(
@@ -647,11 +822,9 @@ def build_payload():
             "database": str(DB_PATH),
             "magic_number": MAGIC_NUMBER,
             "symbol": SYMBOL,
-            "metrics": _metrics(
-                trades,
-                history,
-                source
-            ),
+            "metrics": metrics,
+                
+            
             "periods": _period_stats(history),
             "advanced": _advanced_metrics(history),
             "by_signal": _breakdown_stats(history, "signal"),
@@ -660,7 +833,7 @@ def build_payload():
                 history,
                 "confidence"
             ),
-            "mt5": _mt5_snapshot(),
+            "mt5": mt5_data,
             "recent_trades": trades[-15:][::-1],
             "performance_history": history,
         }
