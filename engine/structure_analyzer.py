@@ -1,24 +1,26 @@
 """
 Aegis AI
 Module: Structure Analyzer
-Version: 0.1.2
+Version: 0.2.0
 """
-
 
 class StructureAnalyzer:
 
     def __init__(self):
+
         self.higher_highs = []
         self.higher_lows = []
+
         self.lower_highs = []
         self.lower_lows = []
+
         self.trend = "Unknown"
 
+    # =====================================================
+    # COMPARE HIGHS
+    # =====================================================
+
     def compare_highs(self, swing_highs):
-        """
-        Compare consecutive swing highs and classify them
-        as Higher High (HH) or Lower High (LH).
-        """
 
         self.higher_highs = []
         self.lower_highs = []
@@ -27,19 +29,27 @@ class StructureAnalyzer:
             return
 
         for i in range(1, len(swing_highs)):
+
             previous = swing_highs[i - 1]
             current = swing_highs[i]
 
             if current[1] > previous[1]:
-                self.higher_highs.append(current)
+
+                self.higher_highs.append(
+                    current
+                )
+
             elif current[1] < previous[1]:
-                self.lower_highs.append(current)
+
+                self.lower_highs.append(
+                    current
+                )
+
+    # =====================================================
+    # COMPARE LOWS
+    # =====================================================
 
     def compare_lows(self, swing_lows):
-        """
-        Compare consecutive swing lows and classify them
-        as Higher Low (HL) or Lower Low (LL).
-        """
 
         self.higher_lows = []
         self.lower_lows = []
@@ -48,38 +58,112 @@ class StructureAnalyzer:
             return
 
         for i in range(1, len(swing_lows)):
+
             previous = swing_lows[i - 1]
             current = swing_lows[i]
 
             if current[1] > previous[1]:
-                self.higher_lows.append(current)
+
+                self.higher_lows.append(
+                    current
+                )
+
             elif current[1] < previous[1]:
-                self.lower_lows.append(current)
 
-    def detect_trend(self):
-        """
-        Detect the overall market trend.
-        """
+                self.lower_lows.append(
+                    current
+                )
 
-        if self.higher_highs and self.higher_lows:
-            self.trend = "Bullish"
+    # =====================================================
+    # DETECT TREND
+    # =====================================================
 
-        elif self.lower_highs and self.lower_lows:
-            self.trend = "Bearish"
+    def detect_trend(
+        self,
+        swing_highs,
+        swing_lows,
+    ):
 
-        else:
+        if (
+            len(swing_highs) < 2
+            or len(swing_lows) < 2
+        ):
+
             self.trend = "Range"
 
-    def analyze(self, swing_highs, swing_lows):
+            return
 
-        self.compare_highs(swing_highs)
-        self.compare_lows(swing_lows)
-        self.detect_trend()
+        previous_high = swing_highs[-2][1]
+        latest_high = swing_highs[-1][1]
+
+        previous_low = swing_lows[-2][1]
+        latest_low = swing_lows[-1][1]
+
+        # -----------------------------------------
+        # Bullish structure
+        # -----------------------------------------
+
+        if (
+            latest_high > previous_high
+            and latest_low > previous_low
+        ):
+
+            self.trend = "Bullish"
+
+        # -----------------------------------------
+        # Bearish structure
+        # -----------------------------------------
+
+        elif (
+            latest_high < previous_high
+            and latest_low < previous_low
+        ):
+
+            self.trend = "Bearish"
+
+        # -----------------------------------------
+        # Mixed / ranging structure
+        # -----------------------------------------
+
+        else:
+
+            self.trend = "Range"
+
+    # =====================================================
+    # ANALYZE
+    # =====================================================
+
+    def analyze(
+        self,
+        swing_highs,
+        swing_lows,
+    ):
+
+        self.compare_highs(
+            swing_highs
+        )
+
+        self.compare_lows(
+            swing_lows
+        )
+
+        self.detect_trend(
+            swing_highs,
+            swing_lows,
+        )
 
         return {
             "trend": self.trend,
-            "higher_highs": self.higher_highs,
-            "higher_lows": self.higher_lows,
-            "lower_highs": self.lower_highs,
-            "lower_lows": self.lower_lows,
+
+            "higher_highs":
+                self.higher_highs,
+
+            "higher_lows":
+                self.higher_lows,
+
+            "lower_highs":
+                self.lower_highs,
+
+            "lower_lows":
+                self.lower_lows,
         }
